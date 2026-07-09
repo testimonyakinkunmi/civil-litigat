@@ -13,6 +13,15 @@ jobs:
     name: Build Debug APK
     runs-on: ubuntu-latest
 
+    env:
+      # Pin Gradle version — must satisfy AGP 9.1.1's minimum (9.3.1+).
+      # Using 9.3.1 explicitly to match AGP's minimum requirement.
+      GRADLE_VERSION: '9.3.1'
+      # Java toolchain version — AGP 9.x requires JDK 21+.
+      JAVA_VERSION: '21'
+      # Android compile/target API level
+      ANDROID_API: '36'
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v5
@@ -21,7 +30,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
@@ -36,23 +45,77 @@ jobs:
         # which is fully compatible with compileSdk 36.
         run: |
           set -e
-          echo "==> Installing platforms;android-36"
-          yes | sdkmanager "platforms;android-36"
+          echo "==> Installing platforms;android-${{ env.ANDROID_API }}"
+          yes | sdkmanager "platforms;android-${{ env.ANDROID_API }}"
           echo "==> Installing build-tools (try 36.0.0, fallback to 35.0.0)"
           yes | sdkmanager "build-tools;36.0.0" || \
             yes | sdkmanager "build-tools;35.0.0"
           echo "==> Installed packages:"
-          sdkmanager --list_installed 2>/dev/null || sdkmanager --list 2>/dev/null | grep -E "Installed|installed"
+          sdkmanager --list_installed 2>/dev/null || true
 
-      - name: Set up Gradle 9.1.0
+      - name: Create local.properties
+        # Required by AGP to locate the Android SDK. The setup-android action
+        # sets ANDROID_HOME but Gradle still wants local.properties.
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
+
+      - name: Create gradle.properties if missing
+        # Sensible defaults for CI: more memory, parallel, caching on.
+        # If the repo already has gradle.properties, this step is skipped.
+        run: |
+          if [ ! -f gradle.properties ]; then
+            cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -XX:+UseG1GC
+          org.gradle.parallel=true
+          org.gradle.caching=true
+          org.gradle.configuration-cache=false
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          kotlin.code.style=official
+          EOF
+            echo "Created gradle.properties:"
+            cat gradle.properties
+          else
+            echo "gradle.properties already exists — leaving alone:"
+            cat gradle.properties
+          fi
+
+      - name: Create dummy release keystore
+        # The build.gradle.kts release signingConfig reads KEYSTORE_PATH etc.
+        # at evaluation time — if the file doesn't exist, even debug builds fail.
+        # Create a throwaway keystore so the config block evaluates successfully.
+        # Debug builds use the auto-generated debug keystore anyway.
+        run: |
+          if [ ! -f my-upload-key.jks ]; then
+            keytool -genkey -v \
+              -keystore my-upload-key.jks \
+              -storepass android -keypass android \
+              -alias ci-dummy \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=CI Dummy, OU=Build, O=LegalRecall, L=London, ST=London, C=UK"
+            echo "Created dummy release keystore"
+          fi
+          # Export the env vars the build.gradle.kts reads — even for debug builds
+          # the signingConfigs block may reference them at config time.
+          echo "KEYSTORE_PATH=$(pwd)/my-upload-key.jks" >> $GITHUB_ENV
+          echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+          echo "KEY_ALIAS=ci-dummy" >> $GITHUB_ENV
+
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: '9.1.0'
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          # We generate the wrapper JAR on the fly during this run, so there's
+          # no committed checksum to validate against. Disable validation to
+          # avoid "At least one Gradle Wrapper Jar failed validation!" errors.
+          validate-wrappers: false
 
       - name: Generate Gradle wrapper
         # The repo is missing gradlew / gradle-wrapper.jar / gradle-wrapper.properties.
-        # Generate them on the fly so we can use ./gradlew.
-        run: gradle wrapper --gradle-version 9.1.0 --distribution-type bin
+        # Generate them on the fly with the correct version to satisfy AGP 9.1.1.
+        run: gradle wrapper --gradle-version ${{ env.GRADLE_VERSION }} --distribution-type bin
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -71,17 +134,36 @@ jobs:
           fi
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+        # --continue makes Gradle run all tasks even if some fail, so we see
+        # ALL errors in one pass instead of one-at-a-time round trips.
+        # --stacktrace gives us the full call stack for any failure.
+        run: ./gradlew :app:assembleDebug --continue --stacktrace --no-daemon
 
       - name: Upload APK artifact
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: legal-recall-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-          if-no-files-found: error
+          if-no-files-found: warn
 
-      - name: Print APK location
+      - name: Upload build reports on failure
+        # If the build fails, upload Gradle's reports so we can debug remotely.
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: build-reports
+          path: |
+            app/build/reports/
+            build/reports/
+            .gradle/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Print APK location on success
+        if: success()
         run: |
           echo "✅ APK built successfully"
           ls -lh app/build/outputs/apk/debug/app-debug.apk
+
