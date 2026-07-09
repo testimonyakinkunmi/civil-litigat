@@ -25,10 +25,24 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          packages: |
-            platforms;android-36
-            build-tools;36.0.0
+
+      - name: Accept Android SDK licenses
+        # Explicit license acceptance — sometimes the action's auto-accept misses some.
+        run: yes | sdkmanager --licenses >/dev/null 2>&1 || true
+
+      - name: Install Android SDK packages
+        # API 36 platform is required (compileSdk = 36). For build-tools, 36.0.0
+        # is bleeding-edge and sometimes unavailable — fall back to 35.0.0,
+        # which is fully compatible with compileSdk 36.
+        run: |
+          set -e
+          echo "==> Installing platforms;android-36"
+          yes | sdkmanager "platforms;android-36"
+          echo "==> Installing build-tools (try 36.0.0, fallback to 35.0.0)"
+          yes | sdkmanager "build-tools;36.0.0" || \
+            yes | sdkmanager "build-tools;35.0.0"
+          echo "==> Installed packages:"
+          sdkmanager --list_installed 2>/dev/null || sdkmanager --list 2>/dev/null | grep -E "Installed|installed"
 
       - name: Set up Gradle 9.1.0
         uses: gradle/actions/setup-gradle@v5
