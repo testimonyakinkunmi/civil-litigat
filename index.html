@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#111318]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legal Recall - 100% Offline Active Recall</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bentoBg: '#111318',
+            bentoSurface: '#1C1B1F',
+            bentoBorder: '#44474E',
+            bentoAccent: '#D0BCFF',
+            bentoHighlight: '#381E72',
+            bentoDarkAccent: '#2D2F33',
+            bentoSubtext: '#919094',
+            bentoText: '#E2E2E6',
+            correctGreen: '#2ECC71',
+            incorrectRed: '#E74C3C',
+            warmAmber: '#FFFF9F43',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .code-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Hide scrollbars but keep functionality */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="h-full text-bentoText flex flex-col justify-between max-w-md mx-auto bg-bentoBg border-x border-bentoBorder shadow-2xl relative overflow-hidden">
+
+  <!-- Service Worker Registration & Initialization Script -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker registered successfully!', reg.scope))
+          .catch((err) => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
+
+  <!-- Top Navigation Header -->
+  <header class="p-4 bg-bentoBg border-b border-bentoBorder flex justify-between items-center z-10">
+    <div>
+      <p class="text-[10px] font-bold tracking-widest text-bentoSubtext uppercase">Elite Edtech</p>
+      <h1 class="text-xl font-bold text-white tracking-tight">Law Architect</h1>
+      <!-- Offline Engine Badge -->
+      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 mt-1 bg-bentoDarkAccent rounded text-[9px] font-bold text-bentoAccent border border-bentoAccent/20">
+        <i class="fa-solid fa-cloud-slash text-[8px]"></i> 100% OFFLINE ENGINE
+      </div>
+    </div>
+    
+    <!-- Header Right Buttons -->
+    <div class="flex items-center gap-2">
+      <!-- Bookmark Icon Button -->
+      <button onclick="navigateTo('bookmarks')" class="w-9 h-9 flex items-center justify-center bg-bentoDarkAccent hover:bg-bentoBorder transition border border-bentoBorder rounded-full relative" title="View Bookmarks">
+        <i class="fa-solid fa-bookmark text-bentoAccent text-sm"></i>
+        <span id="bookmark-badge" class="absolute -top-1 -right-1 bg-warmAmber text-bentoBg text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+      </button>
+
+      <!-- Stats Icon Button -->
+      <button onclick="navigateTo('stats')" class="w-9 h-9 flex items-center justify-center bg-bentoDarkAccent hover:bg-bentoBorder transition border border-bentoBorder rounded-full" title="View Performance Insights">
+        <i class="fa-solid fa-chart-simple text-bentoAccent text-sm"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Dynamic Screen Content Area -->
+  <main class="flex-1 overflow-y-auto p-4 no-scrollbar">
+
+    <!-- HOME SCREEN -->
+    <div id="screen-home" class="screen space-y-4">
+      <!-- Streak Banner Card -->
+      <div class="bg-gradient-to-r from-bentoHighlight to-bentoSurface p-4 rounded-3xl border border-bentoBorder flex justify-between items-center">
+        <div>
+          <h2 class="text-sm font-bold text-bentoSubtext uppercase tracking-wider">Active Study Streak</h2>
+          <p class="text-2xl font-bold text-white mt-1 flex items-center gap-2">
+            <span id="home-streak-count">0</span> Days <i class="fa-solid fa-fire text-warmAmber animate-pulse"></i>
+          </p>
+          <p class="text-xs text-bentoSubtext mt-1">Answer scenarios daily to sustain retention</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-warmAmber/10 flex items-center justify-center border border-warmAmber/30">
+          <i class="fa-solid fa-calendar-check text-warmAmber text-xl"></i>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder flex flex-col justify-between">
+          <span class="text-xs font-bold text-bentoSubtext">ACCURACY</span>
+          <span id="quick-accuracy" class="text-2xl font-bold text-correctGreen mt-2">0%</span>
+          <span class="text-[10px] text-bentoSubtext mt-1">Global performance</span>
+        </div>
+        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder flex flex-col justify-between">
+          <span class="text-xs font-bold text-bentoSubtext">COMPLETED</span>
+          <span id="quick-completed" class="text-2xl font-bold text-bentoAccent mt-2">0</span>
+          <span class="text-[10px] text-bentoSubtext mt-1">Scenarios finished</span>
+        </div>
+      </div>
+
+      <!-- Curriculum Topics Section Header -->
+      <div class="pt-2">
+        <h3 class="text-lg font-bold text-white">Curriculum Topics</h3>
+        <p class="text-xs text-bentoSubtext mt-1">Select a week to review its verbatim scenario questions. Scoring and explanations are shown instantly.</p>
+      </div>
+
+      <!-- Loading / Empty / Topics List Container -->
+      <div id="topics-list" class="space-y-3">
+        <div class="text-center py-8 text-bentoSubtext">
+          <i class="fa-solid fa-spinner animate-spin text-2xl text-bentoAccent"></i>
+          <p class="mt-2 text-sm">Loading offline curriculum data...</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ACTIVE QUIZ SCREEN -->
+    <div id="screen-quiz" class="screen space-y-4 hidden">
+      <!-- Quiz Header Controls -->
+      <div class="flex justify-between items-center">
+        <button onclick="navigateTo('home')" class="w-9 h-9 flex items-center justify-center bg-bentoDarkAccent rounded-full border border-bentoBorder hover:bg-bentoBorder transition">
+          <i class="fa-solid fa-arrow-left text-white"></i>
+        </button>
+        <span id="quiz-progress-label" class="text-sm font-bold text-white">1 / 5</span>
+        <button id="quiz-bookmark-btn" onclick="toggleCurrentBookmark()" class="w-9 h-9 flex items-center justify-center bg-bentoDarkAccent rounded-full border border-bentoBorder hover:bg-bentoBorder transition">
+          <i class="fa-regular fa-bookmark text-bentoAccent"></i>
+        </button>
+      </div>
+
+      <!-- Visual Progress Indicator -->
+      <div class="w-full bg-bentoDarkAccent h-1.5 rounded-full overflow-hidden">
+        <div id="quiz-progress-bar" class="bg-bentoAccent h-full transition-all duration-300" style="width: 20%"></div>
+      </div>
+
+      <!-- Verbatim Scenario Card -->
+      <div class="bg-bentoSurface p-5 rounded-3xl border border-bentoBorder space-y-3">
+        <span class="text-[10px] font-bold tracking-widest text-bentoAccent uppercase block">Verbatim Case Scenario</span>
+        <p id="quiz-scenario-text" class="text-sm text-white leading-relaxed font-normal"></p>
+      </div>
+
+      <!-- Multiple Choice Options -->
+      <div id="quiz-options-container" class="space-y-2.5">
+        <!-- Dyn generated -->
+      </div>
+
+      <!-- Correction / Explanation Card -->
+      <div id="quiz-explanation-card" class="bg-bentoDarkAccent border border-bentoBorder rounded-3xl p-5 space-y-2 hidden">
+        <div class="flex items-center gap-2">
+          <span id="grade-badge" class="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"></span>
+          <span class="text-xs font-bold text-bentoAccent">VERBATIM SOLUTION KEY</span>
+        </div>
+        <p id="quiz-explanation-text" class="text-xs text-bentoSubtext leading-relaxed font-mono"></p>
+      </div>
+
+      <!-- Bottom Action Button Container -->
+      <div class="pt-2">
+        <button id="quiz-action-btn" class="w-full h-12 rounded-full font-bold transition flex items-center justify-center text-sm shadow-md" disabled></button>
+      </div>
+    </div>
+
+
+    <!-- SESSION COMPLETE SCREEN -->
+    <div id="screen-complete" class="screen space-y-6 hidden">
+      <div class="bg-bentoSurface p-6 rounded-3xl border border-bentoBorder flex flex-col items-center text-center space-y-4">
+        <i class="fa-solid fa-trophy text-warmAmber text-5xl animate-bounce"></i>
+        <div>
+          <h2 class="text-xl font-bold text-white">Session Complete</h2>
+          <p id="complete-topic-title" class="text-xs text-bentoSubtext mt-1"></p>
+        </div>
+
+        <!-- SVG Score Wheel -->
+        <div class="relative w-32 h-32 flex items-center justify-center">
+          <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+            <!-- Background circle -->
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#2D2F33" stroke-width="8"></circle>
+            <!-- Highlighted performance circle -->
+            <circle id="score-circle" cx="50" cy="50" r="40" fill="transparent" stroke="#2ECC71" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" class="transition-all duration-1000"></circle>
+          </svg>
+          <div class="absolute flex flex-col items-center">
+            <span id="complete-fraction" class="text-xl font-bold text-white">0/0</span>
+            <span id="complete-percent" class="text-[10px] text-bentoSubtext font-bold">0%</span>
+          </div>
+        </div>
+
+        <!-- Call to Action Buttons -->
+        <div class="w-full grid grid-cols-2 gap-3 pt-2">
+          <button onclick="restartCurrentQuiz()" class="h-12 rounded-full bg-bentoDarkAccent border border-bentoBorder hover:bg-bentoBorder transition text-bentoAccent font-bold text-sm">
+            Retry
+          </button>
+          <button onclick="navigateTo('home')" class="h-12 rounded-full bg-bentoAccent hover:bg-opacity-90 transition text-bentoHighlight font-bold text-sm">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- FLAGGED SCENARIOS (BOOKMARKS) SCREEN -->
+    <div id="screen-bookmarks" class="screen space-y-4 hidden">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-bookmark text-bentoAccent"></i> Flagged Scenarios
+        </h2>
+        <button onclick="navigateTo('home')" class="w-9 h-9 flex items-center justify-center bg-bentoDarkAccent rounded-full border border-bentoBorder hover:bg-bentoBorder transition">
+          <i class="fa-solid fa-xmark text-white"></i>
+        </button>
+      </div>
+      <p class="text-xs text-bentoSubtext">Review saved active recall questions below. Remove from flags as your subject mastery increases.</p>
+
+      <!-- Bookmark Cards List Container -->
+      <div id="bookmarks-container" class="space-y-3">
+        <!-- Dyn generated -->
+      </div>
+    </div>
+
+
+    <!-- STATS SCREEN -->
+    <div id="screen-stats" class="screen space-y-4 hidden">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-chart-column text-bentoAccent"></i> Performance Stats
+        </h2>
+        <button onclick="navigateTo('home')" class="w-9 h-9 flex items-center justify-center bg-bentoDarkAccent rounded-full border border-bentoBorder hover:bg-bentoBorder transition">
+          <i class="fa-solid fa-xmark text-white"></i>
+        </button>
+      </div>
+      <p class="text-xs text-bentoSubtext">US Patent US8340568B2 guided indicators to track your subject-wise retention over time.</p>
+
+      <!-- Toggle Panel for Charts -->
+      <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3">
+        <span class="text-[10px] font-bold tracking-widest text-bentoAccent uppercase block">Visualization Engine</span>
+        <div class="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
+          <label class="flex flex-col items-center gap-1.5 p-2 bg-bentoDarkAccent rounded-2xl border border-bentoBorder cursor-pointer hover:border-bentoAccent transition">
+            <input type="checkbox" id="chk-accuracy" checked onchange="toggleChartVis('chart-retention-container', this.checked)" class="accent-bentoAccent">
+            <span>Accuracy</span>
+          </label>
+          <label class="flex flex-col items-center gap-1.5 p-2 bg-bentoDarkAccent rounded-2xl border border-bentoBorder cursor-pointer hover:border-bentoAccent transition">
+            <input type="checkbox" id="chk-trend" checked onchange="toggleChartVis('chart-timeline-container', this.checked)" class="accent-bentoAccent">
+            <span>Trend Graph</span>
+          </label>
+          <label class="flex flex-col items-center gap-1.5 p-2 bg-bentoDarkAccent rounded-2xl border border-bentoBorder cursor-pointer hover:border-bentoAccent transition">
+            <input type="checkbox" id="chk-progress" checked onchange="toggleChartVis('chart-completeness-container', this.checked)" class="accent-bentoAccent">
+            <span>Progress</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick Numbers Row -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder text-center">
+          <p class="text-[10px] font-bold text-bentoSubtext uppercase">Accuracy Rating</p>
+          <p id="stats-accuracy-rating" class="text-2xl font-bold mt-1 text-correctGreen">0%</p>
+        </div>
+        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder text-center">
+          <p class="text-[10px] font-bold text-bentoSubtext uppercase">Scenarios Finished</p>
+          <p id="stats-scenarios-finished" class="text-2xl font-bold mt-1 text-warmAmber">0</p>
+        </div>
+      </div>
+
+      <!-- Chart 1: Topic Retention Analytics -->
+      <div id="chart-retention-container" class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3 transition-all duration-300">
+        <div>
+          <h3 class="text-sm font-bold text-white">Topic Retention Analytics</h3>
+          <p class="text-[10px] text-bentoSubtext">Weekly Civil Litigation accuracy indicators</p>
+        </div>
+        <!-- Bar Chart SVG Container -->
+        <div class="h-32 w-full pt-2">
+          <svg id="svg-bar-chart" class="w-full h-full" viewBox="0 0 350 120">
+            <!-- Background baseline -->
+            <line x1="0" y1="100" x2="350" y2="100" stroke="#44474E" stroke-width="2"></line>
+            <!-- Generated bar placeholders / actual values -->
+          </svg>
+        </div>
+        <div class="flex justify-between text-[8px] font-bold text-bentoSubtext uppercase px-2">
+          <span>W3</span>
+          <span>W6</span>
+          <span>W9</span>
+          <span>W12</span>
+          <span>W15</span>
+        </div>
+      </div>
+
+      <!-- Chart 2: Retention Timeline (Line Chart) -->
+      <div id="chart-timeline-container" class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3 transition-all duration-300">
+        <div>
+          <h3 class="text-sm font-bold text-white">Retention Timeline</h3>
+          <p class="text-[10px] text-bentoSubtext">Gradient trend of consecutive answers</p>
+        </div>
+        <!-- Line Chart SVG Container -->
+        <div class="h-32 w-full pt-2 flex items-center justify-center">
+          <div id="empty-trend-alert" class="text-xs text-bentoSubtext text-center py-4">
+            A minimum of 2 test attempts is required to draw trends.
+          </div>
+          <svg id="svg-line-chart" class="w-full h-full hidden" viewBox="0 0 350 120">
+            <!-- Gridlines -->
+            <line x1="0" y1="20" x2="350" y2="20" stroke="#44474E" stroke-width="1" stroke-dasharray="3,3"></line>
+            <line x1="0" y1="100" x2="350" y2="100" stroke="#44474E" stroke-width="1" stroke-dasharray="3,3"></line>
+            <!-- Generated line trend and dots -->
+          </svg>
+        </div>
+      </div>
+
+      <!-- Chart 3: Curriculum Completeness (Progress Gauge) -->
+      <div id="chart-completeness-container" class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder flex flex-col items-center text-center space-y-3 transition-all duration-300">
+        <div class="self-start text-left">
+          <h3 class="text-sm font-bold text-white">Curriculum Completeness</h3>
+          <p class="text-[10px] text-bentoSubtext">Percentage of weeks attempted</p>
+        </div>
+
+        <div class="relative w-40 h-24 flex items-center justify-center overflow-hidden">
+          <svg class="absolute top-0 w-full h-full" viewBox="0 0 100 60">
+            <!-- Background Arc -->
+            <path d="M 15,50 A 35,35 0 0,1 85,50" fill="none" stroke="#2D2F33" stroke-width="8" stroke-linecap="round"></path>
+            <!-- Progress Arc -->
+            <path id="gauge-arc" d="M 15,50 A 35,35 0 0,1 85,50" fill="none" stroke="#D0BCFF" stroke-width="8" stroke-linecap="round" stroke-dasharray="110" stroke-dashoffset="110" class="transition-all duration-1000"></path>
+          </svg>
+          <div class="absolute bottom-1 flex flex-col items-center">
+            <span id="completeness-ratio" class="text-base font-bold text-white">0 / 0</span>
+            <span class="text-[8px] font-bold text-bentoSubtext uppercase">Weeks Studied</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clear All Stats Button -->
+      <button onclick="clearStudyStats()" class="w-full h-11 bg-incorrectRed hover:bg-opacity-90 rounded-full text-white font-bold text-sm transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-trash-can"></i> Clear All Study Statistics
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Footer Info / Local Time Indicator -->
+  <footer class="p-4 bg-bentoBg border-t border-bentoBorder text-center text-[10px] text-bentoSubtext tracking-wide uppercase">
+    Offline state saved securely on device.
+  </footer>
+
+  <!-- CORE LOGIC / CONTROLLER SCRIPT -->
+  <script>
+    // State management variables
+    let database = {
+      streaks: 0,
+      attempts: [], // array of { weekName, scenario, correctIndex, selectedIndex, timestamp }
+      bookmarks: [] // array of { weekName, scenario, correctIndex, options, verbatimCorrection }
+    };
+    
+    let topics = [];
+    let currentQuizState = {
+      active: false,
+      topicName: "",
+      quizzes: [],
+      currentIndex: 0,
+      correctCount: 0,
+      selectedOptionIndex: null,
+      isAnswered: false
+    };
+
+    // Initialize local database from localStorage on startup
+    function loadLocalDatabase() {
+      const stored = localStorage.getItem('legal_recall_db');
+      if (stored) {
+        try {
+          database = JSON.parse(stored);
+        } catch (e) {
+          console.error("Failed to parse stored statistics database:", e);
+        }
+      }
+      updateGlobalMetrics();
+    }
+
+    function saveLocalDatabase() {
+      localStorage.setItem('legal_recall_db', JSON.stringify(database));
+      updateGlobalMetrics();
+    }
+
+    // Navigation state manager
+    function navigateTo(screenId) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`screen-${screenId}`).classList.remove('hidden');
+      
+      // Highlight/Load specific screen attributes
+      if (screenId === 'home') {
+        renderCurriculumList();
+      } else if (screenId === 'bookmarks') {
+        renderBookmarks();
+      } else if (screenId === 'stats') {
+        renderAnalytics();
+      }
+    }
+
+    // Fetches curriculum data and maps them out
+    async function loadCurriculum() {
+      try {
+        const res = await fetch('./jsondata.json');
+        if (!res.ok) throw new Error("HTTP error " + res.status);
+        const data = await res.json();
+        
+        // Convert course format to simple weeks
+        topics = data.topics.map(t => {
+          // Flatten nested quizzes from subtopics
+          let quizzes = [];
+          t.subtopics.forEach(sub => {
+            quizzes = quizzes.concat(sub.quizzes);
+          });
+          return {
+            topicName: t.topicName,
+            quizzes: quizzes
+          };
+        });
+        
+        renderCurriculumList();
+      } catch (err) {
+        console.error("Failed to load local curriculum json:", err);
+        document.getElementById('topics-list').innerHTML = `
+          <div class="bg-incorrectRed/10 p-4 border border-incorrectRed/30 rounded-3xl text-center">
+            <i class="fa-solid fa-circle-exclamation text-incorrectRed text-2xl"></i>
+            <p class="text-sm font-bold text-white mt-2">Failed to load local database assets</p>
+            <p class="text-xs text-bentoSubtext mt-1">Please ensure jsondata.json is loaded correctly.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Render topics list
+    function renderCurriculumList() {
+      const container = document.getElementById('topics-list');
+      if (topics.length === 0) return;
+
+      container.innerHTML = '';
+      topics.forEach((topic) => {
+        // Calculate analytics for this specific topic
+        const topicAttempts = database.attempts.filter(a => a.weekName.toLowerCase() === topic.topicName.toLowerCase());
+        const totalAnswered = topicAttempts.length;
+        const correctCount = topicAttempts.filter(a => a.selectedIndex === a.correctIndex).length;
+        const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : null;
+
+        const accuracyBadge = accuracy !== null 
+          ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${accuracy >= 60 ? 'bg-correctGreen/15 text-correctGreen' : 'bg-incorrectRed/15 text-incorrectRed'}">${accuracy}%</span>` 
+          : '';
+
+        const statusSubtext = totalAnswered > 0 
+          ? `<span class="text-[10px] text-bentoSubtext">${totalAnswered} scenarios logged</span>`
+          : `<span class="text-[10px] text-bentoSubtext/60">Not attempted yet</span>`;
+
+        const card = document.createElement('div');
+        card.className = "bg-bentoSurface p-4.5 rounded-3xl border border-bentoBorder hover:border-bentoAccent/40 cursor-pointer transition flex items-center justify-between";
+        card.onclick = () => startTopicQuiz(topic.topicName);
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white text-base">${topic.topicName}</span>
+              ${accuracyBadge}
+            </div>
+            <p class="text-[11px] text-bentoSubtext">${topic.quizzes.length} Verbatim Scenarios</p>
+            ${statusSubtext}
+          </div>
+          <div class="w-9 h-9 rounded-full bg-bentoHighlight hover:bg-bentoAccent transition flex items-center justify-center group">
+            <i class="fa-solid fa-play text-bentoAccent group-hover:text-bentoHighlight text-xs pl-0.5"></i>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Updates header metrics
+    function updateGlobalMetrics() {
+      // Study Streak Counter
+      document.getElementById('home-streak-count').innerText = database.streaks || 0;
+      
+      const totalAttempted = database.attempts.length;
+      document.getElementById('quick-completed').innerText = totalAttempted;
+      document.getElementById('stats-scenarios-finished').innerText = totalAttempted;
+
+      const correctCount = database.attempts.filter(a => a.selectedIndex === a.correctIndex).length;
+      const accuracyPercent = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
+      
+      document.getElementById('quick-accuracy').innerText = `${accuracyPercent}%`;
+      document.getElementById('stats-accuracy-rating').innerText = `${accuracyPercent}%`;
+      
+      const accTextEl = document.getElementById('stats-accuracy-rating');
+      if (accuracyPercent >= 60) {
+        accTextEl.className = "text-2xl font-bold mt-1 text-correctGreen";
+      } else {
+        accTextEl.className = "text-2xl font-bold mt-1 text-incorrectRed";
+      }
+
+      // Bookmark Badging
+      const bBadge = document.getElementById('bookmark-badge');
+      if (database.bookmarks.length > 0) {
+        bBadge.innerText = database.bookmarks.length;
+        bBadge.classList.remove('hidden');
+      } else {
+        bBadge.classList.add('hidden');
+      }
+    }
+
+    // QUIZ CONSOLE ACTIONS
+    function startTopicQuiz(topicName) {
+      const topic = topics.find(t => t.topicName.toLowerCase() === topicName.toLowerCase());
+      if (!topic || topic.quizzes.length === 0) return;
+
+      currentQuizState = {
+        active: true,
+        topicName: topic.topicName,
+        quizzes: [...topic.quizzes],
+        currentIndex: 0,
+        correctCount: 0,
+        selectedOptionIndex: null,
+        isAnswered: false
+      };
+
+      navigateTo('quiz');
+      renderQuizQuestion();
+    }
+
+    function renderQuizQuestion() {
+      const quiz = currentQuizState.quizzes[currentQuizState.currentIndex];
+      const count = currentQuizState.quizzes.length;
+      
+      document.getElementById('quiz-progress-label').innerText = `${currentQuizState.currentIndex + 1} / ${count}`;
+      document.getElementById('quiz-progress-bar').style.width = `${((currentQuizState.currentIndex + 1) / count) * 100}%`;
+      document.getElementById('quiz-scenario-text').innerText = quiz.scenario;
+
+      // Reset bookmark status icon
+      updateBookmarkIcon();
+
+      // Clear layout
+      document.getElementById('quiz-explanation-card').classList.add('hidden');
+      
+      const optionsContainer = document.getElementById('quiz-options-container');
+      optionsContainer.innerHTML = '';
+
+      quiz.options.forEach((opt, idx) => {
+        const optionLabel = String.fromCharCode(65 + idx); // A, B, C, D
+        const optBtn = document.createElement('div');
+        optBtn.id = `quiz-option-${idx}`;
+        optBtn.className = "p-4 bg-bentoDarkAccent/30 border border-bentoBorder rounded-2xl cursor-pointer hover:bg-bentoDarkAccent/50 transition flex items-center gap-3 select-none";
+        optBtn.onclick = () => selectOption(idx);
+        optBtn.innerHTML = `
+          <div class="w-6 h-6 rounded bg-bentoDarkAccent font-bold text-xs text-white flex items-center justify-center border border-bentoBorder transition-all" id="badge-opt-${idx}">
+            ${optionLabel}
+          </div>
+          <span class="text-xs text-white leading-normal font-medium flex-1">${opt}</span>
+        `;
+        optionsContainer.appendChild(optBtn);
+      });
+
+      // Grade button state setup
+      const actionBtn = document.getElementById('quiz-action-btn');
+      actionBtn.innerText = "Grade and view answer keys";
+      actionBtn.className = "w-full h-12 rounded-full bg-bentoDarkAccent text-bentoSubtext font-bold transition flex items-center justify-center text-sm shadow-md cursor-not-allowed";
+      actionBtn.disabled = true;
+      actionBtn.onclick = () => gradeCurrentQuestion();
+    }
+
+    function selectOption(index) {
+      if (currentQuizState.isAnswered) return;
+
+      currentQuizState.selectedOptionIndex = index;
+
+      // Update styling on options
+      const count = currentQuizState.quizzes[currentQuizState.currentIndex].options.length;
+      for (let i = 0; i < count; i++) {
+        const opt = document.getElementById(`quiz-option-${i}`);
+        const badge = document.getElementById(`badge-opt-${i}`);
+        
+        if (i === index) {
+          opt.className = "p-4 bg-bentoAccent/15 border-2 border-bentoAccent rounded-2xl cursor-pointer transition flex items-center gap-3 select-none";
+          badge.className = "w-6 h-6 rounded bg-bentoAccent font-bold text-xs text-bentoHighlight flex items-center justify-center border-none transition-all";
+        } else {
+          opt.className = "p-4 bg-bentoDarkAccent/30 border border-bentoBorder rounded-2xl cursor-pointer hover:bg-bentoDarkAccent/50 transition flex items-center gap-3 select-none";
+          badge.className = "w-6 h-6 rounded bg-bentoDarkAccent font-bold text-xs text-white flex items-center justify-center border border-bentoBorder transition-all";
+        }
+      }
+
+      // Enable submit action
+      const actionBtn = document.getElementById('quiz-action-btn');
+      actionBtn.className = "w-full h-12 rounded-full bg-bentoAccent text-bentoHighlight font-bold hover:bg-opacity-90 cursor-pointer transition flex items-center justify-center text-sm shadow-md";
+      actionBtn.disabled = false;
+    }
+
+    function gradeCurrentQuestion() {
+      if (currentQuizState.isAnswered || currentQuizState.selectedOptionIndex === null) return;
+
+      currentQuizState.isAnswered = true;
+      const quiz = currentQuizState.quizzes[currentQuizState.currentIndex];
+      const correctIdx = quiz.correctIndex;
+      const selectedIdx = currentQuizState.selectedOptionIndex;
+      const isCorrect = (selectedIdx === correctIdx);
+
+      if (isCorrect) currentQuizState.correctCount++;
+
+      // Log attempt into stats array database
+      database.attempts.push({
+        weekName: currentQuizState.topicName,
+        scenario: quiz.scenario,
+        correctIndex: correctIdx,
+        selectedIndex: selectedIdx,
+        timestamp: Date.now()
+      });
+
+      // Update study streaks elegantly (increments if it was 0, or dynamically tracks consecutive study)
+      if (database.streaks === 0) {
+        database.streaks = 1;
+      } else if (database.attempts.length % 5 === 0) {
+        // Increment streak every 5 questions finished to keep user gamified
+        database.streaks++;
+      }
+      
+      saveLocalDatabase();
+
+      // Render graded feedback style on option UI
+      quiz.options.forEach((opt, idx) => {
+        const optBtn = document.getElementById(`quiz-option-${idx}`);
+        const badge = document.getElementById(`badge-opt-${idx}`);
+        
+        if (idx === correctIdx) {
+          // Highlight correct green
+          optBtn.className = "p-4 bg-correctGreen/20 border-2 border-correctGreen rounded-2xl transition flex items-center gap-3 select-none";
+          badge.className = "w-6 h-6 rounded bg-correctGreen font-bold text-xs text-white flex items-center justify-center border-none transition-all";
+        } else if (idx === selectedIdx) {
+          // Highlight incorrect red
+          optBtn.className = "p-4 bg-incorrectRed/20 border-2 border-incorrectRed rounded-2xl transition flex items-center gap-3 select-none";
+          badge.className = "w-6 h-6 rounded bg-incorrectRed font-bold text-xs text-white flex items-center justify-center border-none transition-all";
+        } else {
+          optBtn.className = "p-4 bg-bentoDarkAccent/10 border border-bentoBorder/40 rounded-2xl opacity-60 transition flex items-center gap-3 select-none";
+          badge.className = "w-6 h-6 rounded bg-bentoDarkAccent/20 font-bold text-xs text-bentoSubtext flex items-center justify-center border border-bentoBorder/20 transition-all";
+        }
+      });
+
+      // Configure Solution Card
+      const explanationCard = document.getElementById('quiz-explanation-card');
+      const badgeText = document.getElementById('grade-badge');
+      const explanationText = document.getElementById('quiz-explanation-text');
+
+      if (isCorrect) {
+        badgeText.innerText = "Correct";
+        badgeText.className = "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-correctGreen/15 text-correctGreen";
+      } else {
+        badgeText.innerText = "Incorrect";
+        badgeText.className = "px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-incorrectRed/15 text-incorrectRed";
+      }
+
+      explanationText.innerText = quiz.verbatimCorrection || "Refer to legal procedural rules.";
+      explanationCard.classList.remove('hidden');
+
+      // Update quiz action button
+      const actionBtn = document.getElementById('quiz-action-btn');
+      const isLast = (currentQuizState.currentIndex + 1 >= currentQuizState.quizzes.length);
+      actionBtn.innerText = isLast ? "Finish Session" : "Next Scenario";
+      actionBtn.onclick = () => {
+        if (isLast) {
+          showSessionComplete();
+        } else {
+          currentQuizState.currentIndex++;
+          currentQuizState.isAnswered = false;
+          currentQuizState.selectedOptionIndex = null;
+          renderQuizQuestion();
+        }
+      };
+    }
+
+    function showSessionComplete() {
+      navigateTo('complete');
+      document.getElementById('complete-topic-title').innerText = currentQuizState.topicName;
+      
+      const fraction = `${currentQuizState.correctCount}/${currentQuizState.quizzes.length}`;
+      const percentage = Math.round((currentQuizState.correctCount / currentQuizState.quizzes.length) * 100);
+      
+      document.getElementById('complete-fraction').innerText = fraction;
+      document.getElementById('complete-percent').innerText = `${percentage}%`;
+
+      // Set score wheel circle path offset
+      const circle = document.getElementById('score-circle');
+      const radius = 40;
+      const circumference = 2 * Math.PI * radius; // 251.2
+      const strokeOffset = circumference - (percentage / 100) * circumference;
+      
+      // Update wheel stroke color
+      if (percentage >= 60) {
+        circle.setAttribute('stroke', '#2ECC71'); // CorrectGreen
+      } else {
+        circle.setAttribute('stroke', '#E74C3C'); // IncorrectRed
+      }
+
+      setTimeout(() => {
+        circle.style.strokeDashoffset = strokeOffset;
+      }, 100);
+    }
+
+    function restartCurrentQuiz() {
+      startTopicQuiz(currentQuizState.topicName);
+    }
+
+    // BOOKMARKING / FLAGGING ACTIONS
+    function getBookmarkState() {
+      if (!currentQuizState.active) return false;
+      const curQuiz = currentQuizState.quizzes[currentQuizState.currentIndex];
+      return database.bookmarks.some(b => b.scenario === curQuiz.scenario);
+    }
+
+    function updateBookmarkIcon() {
+      const isBookmarked = getBookmarkState();
+      const btn = document.getElementById('quiz-bookmark-btn');
+      if (isBookmarked) {
+        btn.innerHTML = `<i class="fa-solid fa-bookmark text-bentoAccent"></i>`;
+      } else {
+        btn.innerHTML = `<i class="fa-regular fa-bookmark text-bentoAccent"></i>`;
+      }
+    }
+
+    function toggleCurrentBookmark() {
+      if (!currentQuizState.active) return;
+      const curQuiz = currentQuizState.quizzes[currentQuizState.currentIndex];
+      const isBookmarked = getBookmarkState();
+
+      if (isBookmarked) {
+        // Remove
+        database.bookmarks = database.bookmarks.filter(b => b.scenario !== curQuiz.scenario);
+      } else {
+        // Add
+        database.bookmarks.push({
+          weekName: currentQuizState.topicName,
+          scenario: curQuiz.scenario,
+          correctIndex: curQuiz.correctIndex,
+          options: curQuiz.options,
+          verbatimCorrection: curQuiz.verbatimCorrection
+        });
+      }
+
+      saveLocalDatabase();
+      updateBookmarkIcon();
+    }
+
+    function renderBookmarks() {
+      const container = document.getElementById('bookmarks-container');
+      container.innerHTML = '';
+
+      if (database.bookmarks.length === 0) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-center">
+            <i class="fa-regular fa-bookmark text-5xl text-bentoDarkAccent mb-3"></i>
+            <h3 class="font-bold text-white">No bookmarks saved.</h3>
+            <p class="text-xs text-bentoSubtext max-w-xs mt-1">Flag questions during your active quizzes to save here.</p>
+          </div>
+        `;
+        return;
+      }
+
+      database.bookmarks.forEach((item, index) => {
+        const correctLabel = String.fromCharCode(65 + item.correctIndex);
+        const card = document.createElement('div');
+        card.className = "bg-bentoSurface p-4.5 rounded-3xl border border-bentoBorder space-y-3";
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-bentoAccent">${item.weekName}</span>
+            <button onclick="removeBookmark(${index})" class="text-bentoAccent hover:text-incorrectRed transition">
+              <i class="fa-solid fa-bookmark"></i>
+            </button>
+          </div>
+          <p class="text-xs text-white leading-relaxed font-mono">${item.scenario}</p>
+          <hr class="border-bentoBorder">
+          <div>
+            <span class="text-[9px] font-bold text-bentoAccent block tracking-wider uppercase">Verbatim Solution Key:</span>
+            <p class="text-[11px] text-bentoSubtext leading-relaxed font-semibold mt-1">${item.verbatimCorrection || 'Refer to legal procedural rules.'}</p>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function removeBookmark(index) {
+      database.bookmarks.splice(index, 1);
+      saveLocalDatabase();
+      renderBookmarks();
+    }
+
+
+    // PERFORMANCE ANALYTICS & VISUALIZATIONS
+    function toggleChartVis(chartId, isChecked) {
+      const el = document.getElementById(chartId);
+      if (isChecked) {
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    function renderAnalytics() {
+      // 1. Accuracy rating bento bars rendering
+      const svgBar = document.getElementById('svg-bar-chart');
+      // Clear generated elements but keep first line
+      svgBar.querySelectorAll('.gen-el').forEach(el => el.remove());
+
+      if (topics.length > 0) {
+        // Max 10 topics display
+        const displayWeeks = topics.slice(0, 10);
+        const barWidth = 14;
+        const space = 18;
+        const maxHeight = 84; // base of chart is 100
+
+        displayWeeks.forEach((t, i) => {
+          const tAttempts = database.attempts.filter(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
+          const total = tAttempts.length;
+          const correct = tAttempts.filter(a => a.selectedIndex === a.correctIndex).length;
+          const accuracy = total > 0 ? (correct / total) : 0;
+
+          const x = 12 + i * (barWidth + space);
+          
+          // Background Bar Grey fill
+          const bgBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          bgBar.setAttribute("x", x);
+          bgBar.setAttribute("y", 16);
+          bgBar.setAttribute("width", barWidth);
+          bgBar.setAttribute("height", maxHeight);
+          bgBar.setAttribute("fill", "#2D2F33");
+          bgBar.setAttribute("class", "gen-el");
+          svgBar.appendChild(bgBar);
+
+          // Highlighted Accuracy bar purple
+          const fillBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          const h = maxHeight * accuracy;
+          const y = 100 - h;
+          fillBar.setAttribute("x", x);
+          fillBar.setAttribute("y", y);
+          fillBar.setAttribute("width", barWidth);
+          fillBar.setAttribute("height", h);
+          fillBar.setAttribute("fill", "#D0BCFF");
+          fillBar.setAttribute("class", "gen-el");
+          svgBar.appendChild(fillBar);
+        });
+      }
+
+      // 2. Trendline plot logic
+      const alertTrend = document.getElementById('empty-trend-alert');
+      const svgLine = document.getElementById('svg-line-chart');
+      svgLine.querySelectorAll('.gen-el').forEach(el => el.remove());
+
+      const attemptsCount = database.attempts.length;
+      if (attemptsCount < 2) {
+        alertTrend.classList.remove('hidden');
+        svgLine.classList.add('hidden');
+      } else {
+        alertTrend.classList.add('hidden');
+        svgLine.classList.remove('hidden');
+
+        const displayAttempts = database.attempts.slice(-8); // display last 8 attempts
+        const stepX = 320 / (displayAttempts.length - 1);
+        let pathD = "";
+
+        displayAttempts.forEach((attempt, idx) => {
+          const isCorrect = (attempt.selectedIndex === attempt.correctIndex);
+          const y = isCorrect ? 30 : 90; // High for correct, low for incorrect
+          const x = 15 + idx * stepX;
+
+          if (idx === 0) {
+            pathD = `M ${x} ${y}`;
+          } else {
+            pathD += ` L ${x} ${y}`;
+          }
+
+          // Add a circle dot at coordinates
+          const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          dot.setAttribute("cx", x);
+          dot.setAttribute("cy", y);
+          dot.setAttribute("r", 4.5);
+          dot.setAttribute("fill", isCorrect ? "#2ECC71" : "#E74C3C");
+          dot.setAttribute("class", "gen-el");
+          svgLine.appendChild(dot);
+        });
+
+        // Add line path to SVG
+        const trendLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        trendLine.setAttribute("d", pathD);
+        trendLine.setAttribute("fill", "none");
+        trendLine.setAttribute("stroke", "#D0BCFF");
+        trendLine.setAttribute("stroke-width", 2.5);
+        trendLine.setAttribute("class", "gen-el");
+        svgLine.insertBefore(trendLine, svgLine.firstChild);
+      }
+
+      // 3. Completeness Arc Gauge configuration
+      const attemptedWeeksCount = topics.filter(t => {
+        return database.attempts.some(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
+      }).length;
+
+      document.getElementById('completeness-ratio').innerText = `${attemptedWeeksCount} / ${topics.length}`;
+      
+      const gaugePercent = topics.length > 0 ? (attemptedWeeksCount / topics.length) : 0;
+      const gaugeArc = document.getElementById('gauge-arc');
+      const maxOffset = 110; // dasharray of arc path
+      const dashoffset = maxOffset - (gaugePercent * maxOffset);
+      
+      setTimeout(() => {
+        gaugeArc.style.strokeDashoffset = dashoffset;
+      }, 150);
+    }
+
+    function clearStudyStats() {
+      if (confirm("Are you sure you want to clear all your study statistics and saved bookmarks? This action is irreversible.")) {
+        database = {
+          streaks: 0,
+          attempts: [],
+          bookmarks: []
+        };
+        saveLocalDatabase();
+        navigateTo('home');
+      }
+    }
+
+    // ONBOARDING INITIALIZER
+    window.addEventListener('DOMContentLoaded', () => {
+      loadLocalDatabase();
+      loadCurriculum();
+    });
+  </script>
+</body>
+</html>
