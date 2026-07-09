@@ -85,23 +85,45 @@ jobs:
         # The build.gradle.kts release signingConfig reads KEYSTORE_PATH etc.
         # at evaluation time — if the file doesn't exist, even debug builds fail.
         # Create a throwaway keystore so the config block evaluates successfully.
-        # Debug builds use the auto-generated debug keystore anyway.
+        # Alias MUST be "upload" (matches build.gradle.kts keyAlias = "upload").
         run: |
           if [ ! -f my-upload-key.jks ]; then
             keytool -genkey -v \
               -keystore my-upload-key.jks \
               -storepass android -keypass android \
-              -alias ci-dummy \
+              -alias upload \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=CI Dummy, OU=Build, O=LegalRecall, L=London, ST=London, C=UK"
-            echo "Created dummy release keystore"
+            echo "Created dummy release keystore (alias=upload, password=android)"
           fi
-          # Export the env vars the build.gradle.kts reads — even for debug builds
-          # the signingConfigs block may reference them at config time.
+
+      - name: Create dummy debug keystore
+        # The build.gradle.kts has a debugConfig signing block that hard-codes:
+        #   storeFile = "${rootDir}/debug.keystore"
+        #   storePassword = "android"
+        #   keyAlias = "androiddebugkey"
+        #   keyPassword = "android"
+        # If debug.keystore doesn't exist, even `assembleDebug` fails at
+        # evaluation time. Generate the standard Android debug keystore with
+        # the EXACT alias/password build.gradle.kts expects.
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v \
+              -keystore debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug, O=Android, C=US"
+            echo "Created dummy debug keystore (alias=androiddebugkey, password=android)"
+          fi
+
+      - name: Export signing env vars
+        # build.gradle.kts reads these at evaluation time for the release
+        # signingConfig. Set them so the file() calls don't NPE.
+        run: |
           echo "KEYSTORE_PATH=$(pwd)/my-upload-key.jks" >> $GITHUB_ENV
           echo "STORE_PASSWORD=android" >> $GITHUB_ENV
           echo "KEY_PASSWORD=android" >> $GITHUB_ENV
-          echo "KEY_ALIAS=ci-dummy" >> $GITHUB_ENV
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -131,6 +153,23 @@ jobs:
           else
             cp .env.example .env
             echo "GEMINI_API_KEY secret not set — using placeholder from .env.example"
+          fi
+
+      - name: Fix KSP version mismatch in libs.versions.toml
+        # The catalog declares KSP 2.3.5 but Kotlin 2.2.10. KSP versions follow
+        # the pattern <kotlin>-<ksp-release>, so 2.3.5 doesn't exist for Kotlin 2.2.10.
+        # Patch the catalog to use KSP 2.2.10-2.0.2 (the latest KSP release for Kotlin 2.2.10).
+        # This is idempotent — only patches if the wrong version is present.
+        run: |
+          if [ -f gradle/libs.versions.toml ]; then
+            echo "==> Before:"
+            grep -E "^(kotlin|googleDevtoolsKsp) =" gradle/libs.versions.toml
+            # Replace any KSP version that doesn't start with the Kotlin version
+            sed -i -E 's/^googleDevtoolsKsp = ".*"/googleDevtoolsKsp = "2.2.10-2.0.2"/' gradle/libs.versions.toml
+            echo "==> After:"
+            grep -E "^(kotlin|googleDevtoolsKsp) =" gradle/libs.versions.toml
+          else
+            echo "WARNING: gradle/libs.versions.toml not found"
           fi
 
       - name: Build debug APK
@@ -166,4 +205,3 @@ jobs:
         run: |
           echo "✅ APK built successfully"
           ls -lh app/build/outputs/apk/debug/app-debug.apk
-
