@@ -1,9 +1,12 @@
-const CACHE_NAME = 'legal-recall-v1';
+const CACHE_NAME = 'legal-recall-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './manifest.json',
+  './app_logo_web.jpg',
   './jsondata.json',
   'https://cdn.tailwindcss.com',
+  'https://cdn.tailwindcss.com/',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
 ];
 
@@ -17,7 +20,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event
+// Activate Event - Clean up old cache versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -33,19 +36,56 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event
+// Fetch Event - Resilient Cache-first with Runtime caching and Navigation fallback
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  const requestUrl = new URL(event.request.url);
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).then((networkResponse) => {
-        // Cache newly fetched external assets if needed, or simply return
-        return networkResponse;
-      }).catch(() => {
-        // Fallback for offline fetch errors (optional)
-        console.log('[Service Worker] Fetch failed, network offline and asset not in cache');
+
+      // 1. Normalize trailing slash for matching (resolves Tailwind URL and other endpoint differences)
+      const isTailwind = requestUrl.hostname === 'cdn.tailwindcss.com';
+      const normalizedUrl = event.request.url.replace(/\/$/, "");
+      
+      return caches.match(normalizedUrl).then((normResponse) => {
+        if (normResponse) {
+          return normResponse;
+        }
+
+        // If not in cache, fetch from network and dynamically cache (resolves Google Fonts & general runtime, Gaps 2 & 3)
+        return fetch(event.request).then((networkResponse) => {
+          // Dynamic caching criteria: valid response status, correct origins, or cors/opaque resources (e.g. google fonts, icons)
+          const isSuccessful = networkResponse && (networkResponse.status === 200 || networkResponse.status === 0);
+          const isEligible = isSuccessful && (
+            requestUrl.origin === self.location.origin || 
+            requestUrl.hostname.includes('googleapis.com') || 
+            requestUrl.hostname.includes('gstatic.com') ||
+            requestUrl.hostname.includes('tailwindcss.com') ||
+            requestUrl.hostname.includes('cloudflare.com')
+          );
+
+          if (isEligible) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+              console.log('[Service Worker] Dynamically cached:', event.request.url);
+            });
+          }
+
+          return networkResponse;
+        }).catch((error) => {
+          // 4. Offline fallback for navigation requests
+          if (event.request.mode === 'navigate') {
+            console.log('[Service Worker] Navigation request failed offline, serving index.html fallback');
+            return caches.match('./') || caches.match('./index.html');
+          }
+          throw error;
+        });
       });
     })
   );
