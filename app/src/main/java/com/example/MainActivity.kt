@@ -97,6 +97,30 @@ fun MainAppContent() {
                             ),
                             color = MaterialTheme.colorScheme.onBackground
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .background(BentoDarkAccent, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudOff,
+                                contentDescription = "Offline Mode",
+                                tint = BentoAccent,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = "100% OFFLINE ENGINE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.sp,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                color = BentoAccent
+                            )
+                        }
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
