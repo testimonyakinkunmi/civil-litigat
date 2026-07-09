@@ -1,0 +1,6 @@
+{
+  "name": "Legal Recall",
+  "description": "Offline active recall and performance analytics application for law students studying Civil Litigation (Weeks 3-19).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
