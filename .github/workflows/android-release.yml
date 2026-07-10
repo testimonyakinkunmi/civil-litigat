@@ -59,14 +59,12 @@ jobs:
          run: |
            echo "sdk.dir=$ANDROID_HOME" > local.properties
            cat local.properties
-
-      - name: Create gradle.properties if missing
-        # Sensible defaults for CI: more memory, parallel, caching on.
-        # If the repo already has gradle.properties, this step is skipped.
+            - name: Create local.properties
+        # Required by AGP to locate the Android SDK. The setup-android action
+        # sets ANDROID_HOME but Gradle still wants local.properties.
         run: |
-          if [ ! -f gradle.properties ]; then
-            cat > gradle.properties <<'EOF'
-          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -XX:+UseG1GC
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
           org.gradle.parallel=true
           org.gradle.caching=true
           org.gradle.configuration-cache=false
