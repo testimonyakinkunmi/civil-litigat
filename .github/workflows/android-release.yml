@@ -52,7 +52,6 @@ jobs:
             yes | sdkmanager "build-tools;35.0.0"
           echo "==> Installed packages:"
           sdkmanager --list_installed 2>/dev/null || true
-
       - name: Create local.properties
         # Required by AGP to locate the Android SDK. The setup-android action
         # sets ANDROID_HOME but Gradle still wants local.properties.
