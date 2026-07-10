@@ -52,19 +52,16 @@ jobs:
             yes | sdkmanager "build-tools;35.0.0"
           echo "==> Installed packages:"
           sdkmanager --list_installed 2>/dev/null || true
-      - name: Create local.properties
-        # Required by AGP to locate the Android SDK. The setup-android action
-        # sets ANDROID_HOME but Gradle still wants local.properties.
-               - name: Create local.properties
-         run: |
-           echo "sdk.dir=$ANDROID_HOME" > local.properties
-           cat local.properties
-            - name: Create local.properties
+
+      - name: Create local.properties and gradle.properties
         # Required by AGP to locate the Android SDK. The setup-android action
         # sets ANDROID_HOME but Gradle still wants local.properties.
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           cat local.properties
+          
+          if [ ! -f gradle.properties ]; then
+            cat <<EOF > gradle.properties
           org.gradle.parallel=true
           org.gradle.caching=true
           org.gradle.configuration-cache=false
