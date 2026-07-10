@@ -53,28 +53,23 @@ jobs:
           echo "==> Installed packages:"
           sdkmanager --list_installed 2>/dev/null || true
 
-      - name: Create local.properties and gradle.properties
-        # Required by AGP to locate the Android SDK. The setup-android action
-        # sets ANDROID_HOME but Gradle still wants local.properties.
+      - name: Create local.properties and patch gradle.properties
+        # Automatically fixes the AGP 9.x Built-in Kotlin conflict with KSP
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          cat local.properties
           
           if [ ! -f gradle.properties ]; then
-            cat <<EOF > gradle.properties
-          org.gradle.parallel=true
-          org.gradle.caching=true
-          org.gradle.configuration-cache=false
-          android.useAndroidX=true
-          android.nonTransitiveRClass=true
-          kotlin.code.style=official
-          EOF
-            echo "Created gradle.properties:"
-            cat gradle.properties
-          else
-            echo "gradle.properties already exists — leaving alone:"
-            cat gradle.properties
+            touch gradle.properties
           fi
+          
+          # Force-injecting compatibility bypass rules for AGP 9.x
+          echo -e "\nandroid.disallowKotlinSourceSets=false" >> gradle.properties
+          echo "org.gradle.parallel=true" >> gradle.properties
+          echo "org.gradle.caching=true" >> gradle.properties
+          echo "org.gradle.configuration-cache=false" >> gradle.properties
+          
+          echo "==> Patched gradle.properties content:"
+          cat gradle.properties
 
       - name: Create dummy release keystore
         # The build.gradle.kts release signingConfig reads KEYSTORE_PATH etc.
