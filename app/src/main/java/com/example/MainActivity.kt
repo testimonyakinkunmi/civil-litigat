@@ -251,12 +251,86 @@ fun MainAppContent() {
 }
 
 @Composable
+fun CourseSelectorTabs(
+    activeCourse: String,
+    onCourseSelected: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+            .testTag("course_selector_card"),
+        colors = CardDefaults.cardColors(containerColor = BentoSurface),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, BentoBorder)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BentoHighlight, RoundedCornerShape(12.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Civil button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (activeCourse == "civil") BentoAccent else Color.Transparent)
+                        .clickable { onCourseSelected("civil") }
+                        .padding(vertical = 8.dp)
+                        .testTag("course_civil_tab"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Civil Litigation",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (activeCourse == "civil") BentoSurface else BentoSubtext
+                    )
+                }
+
+                // Corporate button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (activeCourse == "corporate") BentoAccent else Color.Transparent)
+                        .clickable { onCourseSelected("corporate") }
+                        .padding(vertical = 8.dp)
+                        .testTag("course_corporate_tab"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Corporate Practice",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (activeCourse == "corporate") BentoSurface else BentoSubtext
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = if (activeCourse == "civil") {
+                    "Verbatim scenario training for High Court civil jurisdiction, actions, pleadings, and trials."
+                } else {
+                    "Active recall for company formation, governance, corporate restructuring, and winding up."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = BentoSubtext,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
 fun HomeScreen(model: QuizViewModel) {
     val currentStreak by model.currentStreak.collectAsStateWithLifecycle()
     val longestStreak by model.longestStreak.collectAsStateWithLifecycle()
     val weakestWeeks by model.weakestWeeks.collectAsStateWithLifecycle()
     val microQuizState by model.microQuizState.collectAsStateWithLifecycle()
     val overallAccuracy by model.overallAccuracy.collectAsStateWithLifecycle()
+    val currentCourse by model.currentCourse.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier
@@ -265,6 +339,14 @@ fun HomeScreen(model: QuizViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)
     ) {
+        // --- COURSE SELECTOR TABS ---
+        item {
+            CourseSelectorTabs(
+                activeCourse = currentCourse,
+                onCourseSelected = { model.switchCourse(it) }
+            )
+        }
+
         // --- BENTO CARD 1: OVERALL PERFORMANCE ---
         item {
             Card(
@@ -342,7 +424,7 @@ fun HomeScreen(model: QuizViewModel) {
                                 color = BentoSubtext
                             )
                             Text(
-                                text = "Civil Litigation",
+                                text = if (currentCourse == "civil") "Civil Litigation" else "Corporate Practice",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White
                             )
@@ -369,7 +451,7 @@ fun HomeScreen(model: QuizViewModel) {
             ) {
                 // Weak Spot Bento Card (Left half)
                 val hasWeakSpot = weakestWeeks.isNotEmpty()
-                val weakWeekName = if (hasWeakSpot) weakestWeeks[0].weekName else "Hearsay Rules"
+                val weakWeekName = if (hasWeakSpot) weakestWeeks[0].weekName else "WEEK 3"
                 val weakAccuracy = if (hasWeakSpot) weakestWeeks[0].accuracyPercent.toInt() else 54
 
                 Card(
@@ -377,11 +459,7 @@ fun HomeScreen(model: QuizViewModel) {
                         .weight(1f)
                         .height(115.dp)
                         .clickable {
-                            if (hasWeakSpot) {
-                                model.startTopicQuiz(weakWeekName)
-                            } else {
-                                model.startTopicQuiz("Week 5: Pleadings")
-                            }
+                            model.startTopicQuiz(weakWeekName)
                         }
                         .testTag("bento_weak_spot_card"),
                     shape = RoundedCornerShape(28.dp),
@@ -1044,6 +1122,7 @@ fun HomeScreen(model: QuizViewModel) {
 @Composable
 fun WeekSelectScreen(model: QuizViewModel) {
     val analytics by model.analyticsState.collectAsStateWithLifecycle()
+    val currentCourse by model.currentCourse.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -1063,7 +1142,12 @@ fun WeekSelectScreen(model: QuizViewModel) {
             text = "Select a week to review its verbatim scenario questions. Scoring and explanations are shown instantly.",
             style = MaterialTheme.typography.bodySmall,
             color = BentoSubtext,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        CourseSelectorTabs(
+            activeCourse = currentCourse,
+            onCourseSelected = { model.switchCourse(it) }
         )
 
         LazyColumn(
@@ -1071,7 +1155,7 @@ fun WeekSelectScreen(model: QuizViewModel) {
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            items(model.topics) { topic ->
+            items(model.topics.filter { it.category.equals(currentCourse, ignoreCase = true) }) { topic ->
                 val analytic = analytics.find { it.weekName.equals(topic.topicName, ignoreCase = true) }
                 val hasAttempted = analytic != null && analytic.totalAnswered > 0
                 val accuracyVal = if (hasAttempted) analytic!!.accuracyPercent.toInt() else 0
@@ -1628,6 +1712,75 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
     val attempts by model.allAttempts.collectAsStateWithLifecycle()
     val overallAccuracy by model.overallAccuracy.collectAsStateWithLifecycle()
     val totalQuizzes by model.totalCompletedQuizzes.collectAsStateWithLifecycle()
+    val currentCourse by model.currentCourse.collectAsStateWithLifecycle()
+    val streak by model.currentStreak.collectAsStateWithLifecycle()
+
+    // Calculate Active Recall Retention Score (ARRS)
+    val arrsScore = minOf(1000, ((overallAccuracy * 8) + (attempts.size * 4) + (streak * 20)).toInt())
+    val arrsLevel = when {
+        arrsScore < 400 -> "Novice Advocate"
+        arrsScore < 650 -> "Proficient Practitioner"
+        arrsScore < 850 -> "Advanced Recall Specialist"
+        else -> "Master Legal Counsel"
+    }
+
+    // Cognitive Domain Breakdown
+    val currentCourseTopics = model.topics.filter { it.category.equals(currentCourse, ignoreCase = true) }
+    val currentCourseAttempts = attempts.filter { attempt ->
+        currentCourseTopics.any { it.topicName.equals(attempt.weekName, ignoreCase = true) }
+    }
+
+    var proceduralCount = 0
+    var proceduralCorrect = 0
+    var statutoryCount = 0
+    var statutoryCorrect = 0
+
+    currentCourseAttempts.forEach { attempt ->
+        val topic = currentCourseTopics.find { it.topicName.equals(attempt.weekName, ignoreCase = true) }
+        val quiz = topic?.quizzes?.find { it.scenario.equals(attempt.scenario, ignoreCase = true) }
+        val isCorrect = attempt.selectedIndex == attempt.correctIndex
+
+        if (quiz != null) {
+            val text = (quiz.scenario + " " + quiz.verbatimCorrection).lowercase()
+            val isProc = text.contains("court") || text.contains("jurisdiction") || text.contains("parties") || 
+                         text.contains("procedure") || text.contains("suit") || text.contains("motion") || 
+                         text.contains("pleading") || text.contains("appeal") || text.contains("judge")
+            if (isProc) {
+                proceduralCount++
+                if (isCorrect) proceduralCorrect++
+            } else {
+                statutoryCount++
+                if (isCorrect) statutoryCorrect++
+            }
+        }
+    }
+
+    val proceduralAccuracy = if (proceduralCount > 0) (proceduralCorrect.toFloat() / proceduralCount * 100f).toInt() else 0
+    val statutoryAccuracy = if (statutoryCount > 0) (statutoryCorrect.toFloat() / statutoryCount * 100f).toInt() else 0
+
+    // Spaced Repetition suggestions
+    val spacingRecommendations = currentCourseTopics.take(5).map { topic ->
+        val analytic = analytics.find { it.weekName.equals(topic.topicName, ignoreCase = true) }
+        val status = when {
+            analytic == null || analytic.totalAnswered == 0 -> "UNTESTED BASELINE"
+            analytic.accuracyPercent < 50f -> "CRITICAL REFRESH"
+            analytic.accuracyPercent < 75f -> "MODERATE RECALL"
+            else -> "STRONG RETENTION"
+        }
+        val interval = when (status) {
+            "UNTESTED BASELINE" -> "Study next"
+            "CRITICAL REFRESH" -> "Review in 24h"
+            "MODERATE RECALL" -> "Review in 3d"
+            else -> "Review in 7d"
+        }
+        val badgeColor = when (status) {
+            "UNTESTED BASELINE" -> WarmAmber
+            "CRITICAL REFRESH" -> IncorrectRed
+            "MODERATE RECALL" -> BentoAccent
+            else -> CorrectGreen
+        }
+        Triple(topic.topicName, interval, badgeColor)
+    }
 
     Column(
         modifier = Modifier
@@ -1729,48 +1882,194 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
         ) {
             // Overall Score Metrics
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Hero Card: ARRS
                     Card(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = BentoSurface),
                         shape = RoundedCornerShape(24.dp),
                         border = BorderStroke(1.dp, BentoBorder)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Row(
+                            modifier = Modifier.padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Accuracy Rating", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${overallAccuracy.toInt()}%",
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (overallAccuracy >= 60f) CorrectGreen else IncorrectRed
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "ACTIVE RECALL RETENTION SCORE (ARRS)",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BentoAccent,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "$arrsScore / 1000",
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Level: $arrsLevel",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = BentoSubtext
+                                )
+                            }
+                            // Premium Circular Ring representing ARRS / 1000
+                            Box(
+                                modifier = Modifier.size(64.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawArc(
+                                        color = BentoDarkAccent,
+                                        startAngle = 0f,
+                                        sweepAngle = 360f,
+                                        useCenter = false,
+                                        style = Stroke(width = 6.dp.toPx())
+                                    )
+                                    drawArc(
+                                        color = BentoAccent,
+                                        startAngle = -90f,
+                                        sweepAngle = 360f * (arrsScore / 1000f),
+                                        useCenter = false,
+                                        style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                                    )
+                                }
+                                Text(
+                                    text = "${(arrsScore / 10).toInt()}%",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
+
+                    // Side-by-side simple cards
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Accuracy Rating", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "${overallAccuracy.toInt()}%",
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (overallAccuracy >= 60f) CorrectGreen else IncorrectRed
+                                )
+                            }
+                        }
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Scenarios Finished", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "$totalQuizzes",
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = WarmAmber
+                                )
+                            }
+                        }
+                    }
+
+                    // Cognitive Domain Breakdown
                     Card(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = BentoSurface),
                         shape = RoundedCornerShape(24.dp),
                         border = BorderStroke(1.dp, BentoBorder)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("Scenarios Finished", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Column(modifier = Modifier.padding(18.dp)) {
                             Text(
-                                text = "$totalQuizzes",
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = WarmAmber
+                                text = "Cognitive Domain Accuracy",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
                             )
+                            Text(
+                                text = "Applying verbatim precedents vs direct statutory recall",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BentoSubtext
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Case Application / Procedural row
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Case Application (Procedural)", fontSize = 12.sp, color = BentoText, fontWeight = FontWeight.Medium)
+                                    Text("$proceduralAccuracy%", fontSize = 12.sp, color = BentoAccent, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(100))
+                                        .background(BentoDarkAccent)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(proceduralAccuracy / 100f)
+                                            .clip(RoundedCornerShape(100))
+                                            .background(BentoAccent)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Direct Factual / Statutory recall row
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Direct Factual / Statutory Recall", fontSize = 12.sp, color = BentoText, fontWeight = FontWeight.Medium)
+                                    Text("$statutoryAccuracy%", fontSize = 12.sp, color = WarmAmber, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(100))
+                                        .background(BentoDarkAccent)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(statutoryAccuracy / 100f)
+                                            .clip(RoundedCornerShape(100))
+                                            .background(WarmAmber)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1983,6 +2282,60 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                         color = Color.White
                                     )
                                     Text("Weeks", fontSize = 8.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Spaced Repetition Recommendations Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, BentoBorder)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(
+                            text = "Spaced Repetition Schedule",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Algorithmic recall suggestions based on topic mastery",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BentoSubtext
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        spacingRecommendations.forEach { (topic, interval, color) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = topic,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(color.copy(alpha = 0.15f), RoundedCornerShape(100))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = interval,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = color
+                                    )
                                 }
                             }
                         }

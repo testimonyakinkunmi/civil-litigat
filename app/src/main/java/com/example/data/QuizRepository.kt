@@ -21,7 +21,8 @@ data class VerbatimQuiz(
 
 data class TopicBundle(
     val topicName: String,
-    val quizzes: List<VerbatimQuiz>
+    val quizzes: List<VerbatimQuiz>,
+    val category: String
 )
 
 class QuizRepository(
@@ -75,7 +76,8 @@ class QuizRepository(
                         )
                     }
                 }
-                topics.add(TopicBundle(topicName, quizList))
+                val topicCategory = topicObj.optString("category", if (topicName.contains("WEEK", ignoreCase = true)) "civil" else "corporate")
+                topics.add(TopicBundle(topicName, quizList, topicCategory))
             }
         } catch (e: Exception) {
             Log.e("QuizRepository", "Error parsing jsondata.json: ${e.message}", e)

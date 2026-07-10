@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -47,6 +48,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
 
     // Navigation and state Flows
     val screenState = MutableStateFlow(ScreenState.HOME)
+    val currentCourse = MutableStateFlow("corporate")
     val activeQuiz = MutableStateFlow<ActiveQuizState?>(null)
 
     // Room Database Observables
@@ -93,24 +95,26 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         // Reactive mathematical calculations on user history
-        analyticsState = allAttempts.combine(MutableStateFlow(topics)) { attempts, rawTopics ->
-            rawTopics.map { topic ->
-                val weekAttempts = attempts.filter { it.weekName.equals(topic.topicName, ignoreCase = true) }
-                if (weekAttempts.isEmpty()) {
-                    WeekAnalytic(topic.topicName, 0, 0, 0f)
-                } else {
-                    val correct = weekAttempts.count { it.selectedIndex == it.correctIndex }
-                    val percent = (correct.toFloat() / weekAttempts.size.toFloat()) * 100f
-                    WeekAnalytic(topic.topicName, weekAttempts.size, correct, percent)
+        analyticsState = combine(allAttempts, currentCourse) { attempts, course ->
+            topics
+                .filter { it.category.equals(course, ignoreCase = true) }
+                .map { topic ->
+                    val weekAttempts = attempts.filter { it.weekName.equals(topic.topicName, ignoreCase = true) }
+                    if (weekAttempts.isEmpty()) {
+                        WeekAnalytic(topic.topicName, 0, 0, 0f)
+                    } else {
+                        val correct = weekAttempts.count { it.selectedIndex == it.correctIndex }
+                        val percent = (correct.toFloat() / weekAttempts.size.toFloat()) * 100f
+                        WeekAnalytic(topic.topicName, weekAttempts.size, correct, percent)
+                    }
                 }
-            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-        weakestWeeks = analyticsState.combine(MutableStateFlow(0)) { analytics, _ ->
+        weakestWeeks = analyticsState.map { analytics ->
             analytics
                 .filter { it.totalAnswered > 0 && it.accuracyPercent < 65f }
                 .sortedBy { it.accuracyPercent }
@@ -120,7 +124,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
-        overallAccuracy = analyticsState.combine(MutableStateFlow(0)) { analytics, _ ->
+        overallAccuracy = analyticsState.map { analytics ->
             val total = analytics.sumOf { it.totalAnswered }
             if (total == 0) {
                 0f
@@ -134,9 +138,11 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = 0f
         )
 
-        totalCompletedQuizzes = allAttempts.combine(MutableStateFlow(0)) { attempts, _ ->
-            // Count unique study rounds
-            attempts.size
+        totalCompletedQuizzes = combine(allAttempts, currentCourse) { attempts, course ->
+            attempts.count { attempt ->
+                val topic = topics.find { it.topicName.equals(attempt.weekName, ignoreCase = true) }
+                topic?.category?.equals(course, ignoreCase = true) ?: false
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -153,6 +159,11 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
 
     fun navigateTo(state: ScreenState) {
         screenState.value = state
+    }
+
+    fun switchCourse(course: String) {
+        currentCourse.value = course
+        generateNewMicroQuiz()
     }
 
     private suspend fun refreshStreakState() {
@@ -189,7 +200,10 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
 
     // Selects and launches a specific Week's study quiz session
     fun startTopicQuiz(weekName: String) {
-        val topicBundle = topics.find { it.topicName.equals(weekName, ignoreCase = true) }
+        val topicBundle = topics.find { 
+            it.topicName.equals(weekName, ignoreCase = true) && 
+            it.category.equals(currentCourse.value, ignoreCase = true) 
+        }
         if (topicBundle != null && topicBundle.quizzes.isNotEmpty()) {
             activeQuiz.value = ActiveQuizState(
                 title = topicBundle.topicName,
@@ -202,7 +216,10 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
 
     // Generate option to take a fully random cross-week practice exam
     fun startRandomQuiz() {
-        val allQuizzes = topics.flatMap { it.quizzes }.shuffled()
+        val allQuizzes = topics
+            .filter { it.category.equals(currentCourse.value, ignoreCase = true) }
+            .flatMap { it.quizzes }
+            .shuffled()
         if (allQuizzes.isNotEmpty()) {
             val count = minOf(allQuizzes.size, 15) // Standard full custom random session has 15 items
             val chosen = allQuizzes.take(count)
@@ -217,7 +234,10 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
 
     // Generates a 3-5 question micro-quiz to solve during a quick break on the Home screen
     fun generateNewMicroQuiz() {
-        val allQuizzes = topics.flatMap { it.quizzes }.shuffled()
+        val allQuizzes = topics
+            .filter { it.category.equals(currentCourse.value, ignoreCase = true) }
+            .flatMap { it.quizzes }
+            .shuffled()
         if (allQuizzes.isNotEmpty()) {
             val size = (3..5).random()
             val chosen = allQuizzes.take(minOf(allQuizzes.size, size))

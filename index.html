@@ -124,10 +124,23 @@
         </div>
       </div>
 
-      <!-- Curriculum Topics Section Header -->
-      <div class="pt-2">
+      <!-- Curriculum Topics Section Header & Course Selector -->
+      <div class="pt-2 space-y-3">
         <h3 class="text-lg font-bold text-white">Curriculum Topics</h3>
-        <p class="text-xs text-bentoSubtext mt-1">Select a week to review its verbatim scenario questions. Scoring and explanations are shown instantly.</p>
+        
+        <!-- Tab Selector for Civil Litigation vs Corporate Law Practice -->
+        <div class="flex bg-bentoDarkAccent p-1 rounded-2xl border border-bentoBorder gap-1">
+          <button onclick="switchCourse('civil')" id="btn-course-civil" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-bentoSubtext hover:text-white">
+            <i class="fa-solid fa-scale-balanced mr-1"></i> Civil Lit.
+          </button>
+          <button onclick="switchCourse('corporate')" id="btn-course-corporate" class="flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all bg-bentoAccent text-bentoHighlight shadow-sm">
+            <i class="fa-solid fa-briefcase mr-1"></i> Corporate
+          </button>
+        </div>
+        
+        <p id="course-desc" class="text-xs text-bentoSubtext font-medium leading-relaxed">
+          Active recall for company formation, governance, corporate restructuring, and winding up.
+        </p>
       </div>
 
       <!-- Loading / Empty / Topics List Container -->
@@ -250,7 +263,93 @@
           <i class="fa-solid fa-xmark text-white"></i>
         </button>
       </div>
-      <p class="text-xs text-bentoSubtext">US Patent US8340568B2 guided indicators to track your subject-wise retention over time.</p>
+      <p class="text-xs text-bentoSubtext">Professional active recall indicators detailing memory retrieval strength and cognitive domain competence.</p>
+
+      <!-- Active Recall Retention Score (ARRS) Main Card -->
+      <div class="bg-gradient-to-br from-[#1C1B1F] to-[#252329] p-5 rounded-3xl border border-bentoBorder space-y-3 relative overflow-hidden">
+        <div class="absolute top-0 right-0 p-4 opacity-5">
+          <i class="fa-solid fa-brain text-8xl"></i>
+        </div>
+        <div>
+          <span class="text-[9px] font-bold tracking-widest text-bentoAccent uppercase block">Active Recall Retention Score</span>
+          <p id="stats-arrs-score" class="text-3xl font-extrabold text-white mt-1">0 / 1000</p>
+          <div id="stats-arrs-grade" class="text-xs font-bold uppercase tracking-wider mt-1 text-bentoSubtext">Initiate</div>
+          <p class="text-[10px] text-bentoSubtext mt-1.5 leading-relaxed">
+            Composite score measuring **retrieval accuracy** (70% weight) combined with **syllabus coverage completeness** (30% weight).
+          </p>
+        </div>
+      </div>
+
+      <!-- Streaks & Consecutive Performance Grid -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder flex flex-col justify-between">
+          <span class="text-[10px] font-bold text-bentoSubtext uppercase">Retrieved Streak</span>
+          <span id="stats-current-streak" class="text-lg font-bold text-correctGreen mt-1">0 consecutive</span>
+          <span id="stats-max-streak" class="text-[9px] text-bentoSubtext mt-1">Best: 0</span>
+        </div>
+        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder flex flex-col justify-between">
+          <span class="text-[10px] font-bold text-bentoSubtext uppercase">Scenarios Practiced</span>
+          <span id="stats-scenarios-finished" class="text-lg font-bold text-warmAmber mt-1">0</span>
+          <span id="stats-accuracy-rating" class="text-[9px] text-bentoSubtext mt-1">Accuracy: 0%</span>
+        </div>
+      </div>
+
+      <!-- Cognitive Competency Domain Analysis -->
+      <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3">
+        <div>
+          <h3 class="text-sm font-bold text-white">Cognitive Competency Domain</h3>
+          <p class="text-[10px] text-bentoSubtext">Factual recall vs. practical scenario-based application accuracy</p>
+        </div>
+        
+        <!-- Domain 1: Procedural Case Application -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-gavel text-bentoAccent text-[10px]"></i> Case Application
+            </span>
+            <span id="stats-proc-accuracy" class="text-bentoAccent">0%</span>
+          </div>
+          <div class="w-full bg-bentoDarkAccent h-2 rounded-full overflow-hidden">
+            <div id="stats-proc-bar" class="bg-bentoAccent h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-[9px] text-bentoSubtext">
+            <span>Scenario comprehension & rule matching</span>
+            <span id="stats-proc-ratio">0/0 cases</span>
+          </div>
+        </div>
+
+        <!-- Domain 2: Direct Factual Recall -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-list-check text-correctGreen text-[10px]"></i> Direct Factual Recall
+            </span>
+            <span id="stats-fact-accuracy" class="text-correctGreen">0%</span>
+          </div>
+          <div class="w-full bg-bentoDarkAccent h-2 rounded-full overflow-hidden">
+            <div id="stats-fact-bar" class="bg-correctGreen h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-[9px] text-bentoSubtext">
+            <span>Statutory provisions & time thresholds</span>
+            <span id="stats-fact-ratio">0/0 rules</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spaced Repetition Review Schedule Recommendations -->
+      <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3">
+        <div>
+          <h3 class="text-sm font-bold text-white">Spaced Repetition Schedule</h3>
+          <p class="text-[10px] text-bentoSubtext">Intelligent review intervals based on memory decay & accuracy</p>
+        </div>
+        
+        <div id="spaced-repetition-schedule" class="space-y-2">
+          <!-- Dynamically generated suggestions -->
+          <div class="p-3 bg-bentoDarkAccent/20 rounded-2xl text-center text-xs text-bentoSubtext">
+            No study sessions recorded. Run quizzes to generate spaced schedules.
+          </div>
+        </div>
+      </div>
 
       <!-- Toggle Panel for Charts -->
       <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3">
@@ -271,23 +370,11 @@
         </div>
       </div>
 
-      <!-- Quick Numbers Row -->
-      <div class="grid grid-cols-2 gap-3">
-        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder text-center">
-          <p class="text-[10px] font-bold text-bentoSubtext uppercase">Accuracy Rating</p>
-          <p id="stats-accuracy-rating" class="text-2xl font-bold mt-1 text-correctGreen">0%</p>
-        </div>
-        <div class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder text-center">
-          <p class="text-[10px] font-bold text-bentoSubtext uppercase">Scenarios Finished</p>
-          <p id="stats-scenarios-finished" class="text-2xl font-bold mt-1 text-warmAmber">0</p>
-        </div>
-      </div>
-
       <!-- Chart 1: Topic Retention Analytics -->
       <div id="chart-retention-container" class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3 transition-all duration-300">
         <div>
-          <h3 class="text-sm font-bold text-white">Topic Retention Analytics</h3>
-          <p class="text-[10px] text-bentoSubtext">Weekly Civil Litigation accuracy indicators</p>
+          <h3 class="text-sm font-bold text-white">Syllabus Retrieval Accuracy</h3>
+          <p class="text-[10px] text-bentoSubtext">Retrieval success percentages per study block</p>
         </div>
         <!-- Bar Chart SVG Container -->
         <div class="h-32 w-full pt-2">
@@ -297,20 +384,13 @@
             <!-- Generated bar placeholders / actual values -->
           </svg>
         </div>
-        <div class="flex justify-between text-[8px] font-bold text-bentoSubtext uppercase px-2">
-          <span>W3</span>
-          <span>W6</span>
-          <span>W9</span>
-          <span>W12</span>
-          <span>W15</span>
-        </div>
       </div>
 
       <!-- Chart 2: Retention Timeline (Line Chart) -->
       <div id="chart-timeline-container" class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder space-y-3 transition-all duration-300">
         <div>
-          <h3 class="text-sm font-bold text-white">Retention Timeline</h3>
-          <p class="text-[10px] text-bentoSubtext">Gradient trend of consecutive answers</p>
+          <h3 class="text-sm font-bold text-white">Retention Chronology</h3>
+          <p class="text-[10px] text-bentoSubtext">Chronological trend of correct and incorrect retrievals</p>
         </div>
         <!-- Line Chart SVG Container -->
         <div class="h-32 w-full pt-2 flex items-center justify-center">
@@ -329,8 +409,8 @@
       <!-- Chart 3: Curriculum Completeness (Progress Gauge) -->
       <div id="chart-completeness-container" class="bg-bentoSurface p-4 rounded-3xl border border-bentoBorder flex flex-col items-center text-center space-y-3 transition-all duration-300">
         <div class="self-start text-left">
-          <h3 class="text-sm font-bold text-white">Curriculum Completeness</h3>
-          <p class="text-[10px] text-bentoSubtext">Percentage of weeks attempted</p>
+          <h3 class="text-sm font-bold text-white">Syllabus Completeness</h3>
+          <p class="text-[10px] text-bentoSubtext">Percentage of subjects tested and parsed</p>
         </div>
 
         <div class="relative w-40 h-24 flex items-center justify-center overflow-hidden">
@@ -342,7 +422,7 @@
           </svg>
           <div class="absolute bottom-1 flex flex-col items-center">
             <span id="completeness-ratio" class="text-base font-bold text-white">0 / 0</span>
-            <span class="text-[8px] font-bold text-bentoSubtext uppercase">Weeks Studied</span>
+            <span class="text-[8px] font-bold text-bentoSubtext uppercase">Blocks Attempted</span>
           </div>
         </div>
       </div>
@@ -370,6 +450,7 @@
     };
     
     let topics = [];
+    let currentCourse = "corporate"; // default to Corporate practice
     let currentQuizState = {
       active: false,
       topicName: "",
@@ -413,6 +494,28 @@
       }
     }
 
+    // Course switcher
+    function switchCourse(course) {
+      currentCourse = course;
+      
+      const btnCivil = document.getElementById('btn-course-civil');
+      const btnCorp = document.getElementById('btn-course-corporate');
+      const descEl = document.getElementById('course-desc');
+      
+      if (course === 'civil') {
+        btnCivil.className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all bg-bentoAccent text-bentoHighlight shadow-sm";
+        btnCorp.className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-bentoSubtext hover:text-white";
+        descEl.innerText = "Verbatim scenario training for High Court civil jurisdiction, actions, pleadings, and trials.";
+      } else {
+        btnCorp.className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all bg-bentoAccent text-bentoHighlight shadow-sm";
+        btnCivil.className = "flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all text-bentoSubtext hover:text-white";
+        descEl.innerText = "Active recall for company formation, governance, corporate restructuring, and winding up.";
+      }
+      
+      renderCurriculumList();
+      updateGlobalMetrics();
+    }
+
     // Fetches curriculum data and maps them out
     async function loadCurriculum() {
       try {
@@ -429,11 +532,13 @@
           });
           return {
             topicName: t.topicName,
-            quizzes: quizzes
+            quizzes: quizzes,
+            category: t.category || (t.topicName.toLowerCase().includes('week') ? 'civil' : 'corporate')
           };
         });
         
-        renderCurriculumList();
+        // Render after load
+        switchCourse('corporate');
       } catch (err) {
         console.error("Failed to load local curriculum json:", err);
         document.getElementById('topics-list').innerHTML = `
@@ -452,7 +557,9 @@
       if (topics.length === 0) return;
 
       container.innerHTML = '';
-      topics.forEach((topic) => {
+      const filteredTopics = topics.filter(t => t.category === currentCourse);
+      
+      filteredTopics.forEach((topic) => {
         // Calculate analytics for this specific topic
         const topicAttempts = database.attempts.filter(a => a.weekName.toLowerCase() === topic.topicName.toLowerCase());
         const totalAnswered = topicAttempts.length;
@@ -460,7 +567,7 @@
         const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : null;
 
         const accuracyBadge = accuracy !== null 
-          ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${accuracy >= 60 ? 'bg-correctGreen/15 text-correctGreen' : 'bg-incorrectRed/15 text-incorrectRed'}">${accuracy}%</span>` 
+          ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${accuracy >= 75 ? 'bg-correctGreen/15 text-correctGreen' : accuracy >= 50 ? 'bg-warmAmber/15 text-warmAmber' : 'bg-incorrectRed/15 text-incorrectRed'}">${accuracy}%</span>` 
           : '';
 
         const statusSubtext = totalAnswered > 0 
@@ -492,23 +599,20 @@
       // Study Streak Counter
       document.getElementById('home-streak-count').innerText = database.streaks || 0;
       
-      const totalAttempted = database.attempts.length;
+      // Filter database attempts to currentCourse
+      const courseAttempts = database.attempts.filter(a => {
+        const topicObj = topics.find(t => t.topicName.toLowerCase() === a.weekName.toLowerCase());
+        return topicObj && topicObj.category === currentCourse;
+      });
+      
+      const totalAttempted = courseAttempts.length;
       document.getElementById('quick-completed').innerText = totalAttempted;
-      document.getElementById('stats-scenarios-finished').innerText = totalAttempted;
 
-      const correctCount = database.attempts.filter(a => a.selectedIndex === a.correctIndex).length;
+      const correctCount = courseAttempts.filter(a => a.selectedIndex === a.correctIndex).length;
       const accuracyPercent = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
       
       document.getElementById('quick-accuracy').innerText = `${accuracyPercent}%`;
-      document.getElementById('stats-accuracy-rating').innerText = `${accuracyPercent}%`;
       
-      const accTextEl = document.getElementById('stats-accuracy-rating');
-      if (accuracyPercent >= 60) {
-        accTextEl.className = "text-2xl font-bold mt-1 text-correctGreen";
-      } else {
-        accTextEl.className = "text-2xl font-bold mt-1 text-incorrectRed";
-      }
-
       // Bookmark Badging
       const bBadge = document.getElementById('bookmark-badge');
       if (database.bookmarks.length > 0) {
@@ -624,11 +728,10 @@
         timestamp: Date.now()
       });
 
-      // Update study streaks elegantly (increments if it was 0, or dynamically tracks consecutive study)
+      // Update study streaks elegantly
       if (database.streaks === 0) {
         database.streaks = 1;
       } else if (database.attempts.length % 5 === 0) {
-        // Increment streak every 5 questions finished to keep user gamified
         database.streaks++;
       }
       
@@ -640,11 +743,9 @@
         const badge = document.getElementById(`badge-opt-${idx}`);
         
         if (idx === correctIdx) {
-          // Highlight correct green
           optBtn.className = "p-4 bg-correctGreen/20 border-2 border-correctGreen rounded-2xl transition flex items-center gap-3 select-none";
           badge.className = "w-6 h-6 rounded bg-correctGreen font-bold text-xs text-white flex items-center justify-center border-none transition-all";
         } else if (idx === selectedIdx) {
-          // Highlight incorrect red
           optBtn.className = "p-4 bg-incorrectRed/20 border-2 border-incorrectRed rounded-2xl transition flex items-center gap-3 select-none";
           badge.className = "w-6 h-6 rounded bg-incorrectRed font-bold text-xs text-white flex items-center justify-center border-none transition-all";
         } else {
@@ -695,17 +796,17 @@
       document.getElementById('complete-fraction').innerText = fraction;
       document.getElementById('complete-percent').innerText = `${percentage}%`;
 
-      // Set score wheel circle path offset
       const circle = document.getElementById('score-circle');
       const radius = 40;
       const circumference = 2 * Math.PI * radius; // 251.2
       const strokeOffset = circumference - (percentage / 100) * circumference;
       
-      // Update wheel stroke color
-      if (percentage >= 60) {
-        circle.setAttribute('stroke', '#2ECC71'); // CorrectGreen
+      if (percentage >= 75) {
+        circle.setAttribute('stroke', '#2ECC71'); 
+      } else if (percentage >= 50) {
+        circle.setAttribute('stroke', '#FFB300');
       } else {
-        circle.setAttribute('stroke', '#E74C3C'); // IncorrectRed
+        circle.setAttribute('stroke', '#E74C3C'); 
       }
 
       setTimeout(() => {
@@ -740,10 +841,8 @@
       const isBookmarked = getBookmarkState();
 
       if (isBookmarked) {
-        // Remove
         database.bookmarks = database.bookmarks.filter(b => b.scenario !== curQuiz.scenario);
       } else {
-        // Add
         database.bookmarks.push({
           weekName: currentQuizState.topicName,
           scenario: curQuiz.scenario,
@@ -773,7 +872,6 @@
       }
 
       database.bookmarks.forEach((item, index) => {
-        const correctLabel = String.fromCharCode(65 + item.correctIndex);
         const card = document.createElement('div');
         card.className = "bg-bentoSurface p-4.5 rounded-3xl border border-bentoBorder space-y-3";
         card.innerHTML = `
@@ -800,7 +898,6 @@
       renderBookmarks();
     }
 
-
     // PERFORMANCE ANALYTICS & VISUALIZATIONS
     function toggleChartVis(chartId, isChecked) {
       const el = document.getElementById(chartId);
@@ -812,37 +909,190 @@
     }
 
     function renderAnalytics() {
-      // 1. Accuracy rating bento bars rendering
+      // Filter topics to active course
+      const filteredTopics = topics.filter(t => t.category === currentCourse);
+      
+      // Filter attempts to active course
+      const courseAttempts = database.attempts.filter(a => {
+        const topicObj = topics.find(t => t.topicName.toLowerCase() === a.weekName.toLowerCase());
+        return topicObj && topicObj.category === currentCourse;
+      });
+      
+      const totalAttempted = courseAttempts.length;
+      const correctCount = courseAttempts.filter(a => a.selectedIndex === a.correctIndex).length;
+      const accuracyPercent = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
+      
+      // Update quick metrics on UI
+      document.getElementById('stats-accuracy-rating').innerText = `${accuracyPercent}%`;
+      document.getElementById('stats-scenarios-finished').innerText = totalAttempted;
+      
+      // 1. Calculate Active Recall Retention Score (ARRS)
+      const attemptedWeeksCount = filteredTopics.filter(t => {
+        return courseAttempts.some(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
+      }).length;
+      const completenessPercent = filteredTopics.length > 0 ? (attemptedWeeksCount / filteredTopics.length) : 0;
+      
+      const arrsValue = Math.round((accuracyPercent / 100) * 700 + completenessPercent * 300);
+      document.getElementById('stats-arrs-score').innerText = `${arrsValue} / 1000`;
+      
+      // Grade label based on ARRS
+      let gradeLabel = "Initiate";
+      let gradeColor = "text-bentoSubtext";
+      if (arrsValue >= 800) {
+        gradeLabel = "Senior Advocate Elite";
+        gradeColor = "text-warmAmber";
+      } else if (arrsValue >= 600) {
+        gradeLabel = "Barrister Mastery";
+        gradeColor = "text-correctGreen";
+      } else if (arrsValue >= 300) {
+        gradeLabel = "Practitioner Competency";
+        gradeColor = "text-bentoAccent";
+      } else if (totalAttempted > 0) {
+        gradeLabel = "Novice Retrieval";
+        gradeColor = "text-bentoText";
+      }
+      const gradeEl = document.getElementById('stats-arrs-grade');
+      gradeEl.innerText = gradeLabel;
+      gradeEl.className = `text-xs font-bold uppercase tracking-wider mt-1 ${gradeColor}`;
+
+      // 2. Active Correct Streak
+      let maxStreak = 0;
+      let currentStreakVal = 0;
+      courseAttempts.forEach(a => {
+        if (a.selectedIndex === a.correctIndex) {
+          currentStreakVal++;
+          if (currentStreakVal > maxStreak) maxStreak = currentStreakVal;
+        } else {
+          currentStreakVal = 0;
+        }
+      });
+      document.getElementById('stats-current-streak').innerText = `${currentStreakVal} consecutive`;
+      document.getElementById('stats-max-streak').innerText = `Best: ${maxStreak}`;
+
+      // 3. Cognitive Domain Breakdown
+      let proceduralTotal = 0;
+      let proceduralCorrect = 0;
+      let factualTotal = 0;
+      let factualCorrect = 0;
+      
+      courseAttempts.forEach(a => {
+        const isCorrect = (a.selectedIndex === a.correctIndex);
+        const isProcedural = /Tunde|Amina|Mrs|Chief|Ltd|Plc|XYZ|ABC|sues|husband|wife|client|partner/i.test(a.scenario);
+        if (isProcedural) {
+          proceduralTotal++;
+          if (isCorrect) proceduralCorrect++;
+        } else {
+          factualTotal++;
+          if (isCorrect) factualCorrect++;
+        }
+      });
+      
+      const procAccuracy = proceduralTotal > 0 ? Math.round((proceduralCorrect / proceduralTotal) * 100) : 0;
+      const factAccuracy = factualTotal > 0 ? Math.round((factualCorrect / factualTotal) * 100) : 0;
+      
+      document.getElementById('stats-proc-accuracy').innerText = `${procAccuracy}%`;
+      document.getElementById('stats-proc-ratio').innerText = `${proceduralCorrect}/${proceduralTotal} applied cases`;
+      document.getElementById('stats-proc-bar').style.width = `${procAccuracy}%`;
+      
+      document.getElementById('stats-fact-accuracy').innerText = `${factAccuracy}%`;
+      document.getElementById('stats-fact-ratio').innerText = `${factualCorrect}/${factualTotal} rules retrieved`;
+      document.getElementById('stats-fact-bar').style.width = `${factAccuracy}%`;
+
+      // 4. Spacing Scheduler Recommendations
+      const schedulerContainer = document.getElementById('spaced-repetition-schedule');
+      schedulerContainer.innerHTML = '';
+      
+      if (filteredTopics.length > 0) {
+        let recommendations = [];
+        filteredTopics.forEach(t => {
+          const tAttempts = courseAttempts.filter(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
+          const total = tAttempts.length;
+          
+          if (total === 0) {
+            recommendations.push({
+              weekName: t.topicName,
+              status: "Untested",
+              priority: 3, 
+              color: "text-bentoAccent",
+              desc: "Unexplored recall area. First retrieve recommended."
+            });
+          } else {
+            const correct = tAttempts.filter(a => a.selectedIndex === a.correctIndex).length;
+            const accuracy = Math.round((correct / total) * 100);
+            
+            if (accuracy < 60) {
+              recommendations.push({
+                weekName: t.topicName,
+                status: `Weak (${accuracy}% accuracy)`,
+                priority: 1, 
+                color: "text-incorrectRed",
+                desc: "Critical decay risk. Review recommended within 6 hours."
+              });
+            } else if (accuracy < 80) {
+              recommendations.push({
+                weekName: t.topicName,
+                status: `Moderate (${accuracy}% accuracy)`,
+                priority: 2, 
+                color: "text-warmAmber",
+                desc: "Intermediate consolidation. Review suggested within 24 hours."
+              });
+            }
+          }
+        });
+        
+        recommendations.sort((a, b) => a.priority - b.priority);
+        const topRecs = recommendations.slice(0, 3);
+        
+        if (topRecs.length === 0) {
+          schedulerContainer.innerHTML = `
+            <div class="p-3 bg-correctGreen/10 border border-correctGreen/20 rounded-2xl text-center text-xs text-correctGreen">
+              <i class="fa-solid fa-circle-check mr-1"></i> Perfect Recall Primed. All active subjects consolidate above 80% accuracy!
+            </div>
+          `;
+        } else {
+          topRecs.forEach(rec => {
+            const recEl = document.createElement('div');
+            recEl.className = "p-3 bg-bentoDarkAccent/30 border border-bentoBorder rounded-2xl flex items-center justify-between text-xs";
+            recEl.innerHTML = `
+              <div class="space-y-0.5">
+                <span class="font-bold text-white">${rec.weekName}</span>
+                <p class="text-[10px] text-bentoSubtext">${rec.desc}</p>
+              </div>
+              <span class="font-bold text-[10px] ${rec.color} uppercase">${rec.status}</span>
+            `;
+            schedulerContainer.appendChild(recEl);
+          });
+        }
+      }
+
+      // 5. Draw Accuracy Bar Chart SVG
       const svgBar = document.getElementById('svg-bar-chart');
-      // Clear generated elements but keep first line
       svgBar.querySelectorAll('.gen-el').forEach(el => el.remove());
 
-      if (topics.length > 0) {
-        // Max 10 topics display
-        const displayWeeks = topics.slice(0, 10);
+      if (filteredTopics.length > 0) {
+        const displayWeeks = filteredTopics.slice(0, 10);
         const barWidth = 14;
         const space = 18;
-        const maxHeight = 84; // base of chart is 100
+        const maxHeight = 84; 
 
         displayWeeks.forEach((t, i) => {
-          const tAttempts = database.attempts.filter(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
+          const tAttempts = courseAttempts.filter(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
           const total = tAttempts.length;
           const correct = tAttempts.filter(a => a.selectedIndex === a.correctIndex).length;
           const accuracy = total > 0 ? (correct / total) : 0;
 
           const x = 12 + i * (barWidth + space);
           
-          // Background Bar Grey fill
           const bgBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           bgBar.setAttribute("x", x);
           bgBar.setAttribute("y", 16);
           bgBar.setAttribute("width", barWidth);
           bgBar.setAttribute("height", maxHeight);
           bgBar.setAttribute("fill", "#2D2F33");
+          bgBar.setAttribute("rx", "3");
           bgBar.setAttribute("class", "gen-el");
           svgBar.appendChild(bgBar);
 
-          // Highlighted Accuracy bar purple
           const fillBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           const h = maxHeight * accuracy;
           const y = 100 - h;
@@ -850,32 +1100,43 @@
           fillBar.setAttribute("y", y);
           fillBar.setAttribute("width", barWidth);
           fillBar.setAttribute("height", h);
-          fillBar.setAttribute("fill", "#D0BCFF");
+          fillBar.setAttribute("fill", accuracy >= 0.75 ? "#2ECC71" : accuracy >= 0.5 ? "#FFB300" : "#E74C3C");
+          fillBar.setAttribute("rx", "3");
           fillBar.setAttribute("class", "gen-el");
           svgBar.appendChild(fillBar);
+          
+          const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          label.setAttribute("x", x + barWidth / 2);
+          label.setAttribute("y", 112);
+          label.setAttribute("fill", "#919094");
+          label.setAttribute("font-size", "7px");
+          label.setAttribute("font-weight", "bold");
+          label.setAttribute("text-anchor", "middle");
+          label.setAttribute("class", "gen-el");
+          label.textContent = t.topicName.replace("WEEK ", "W");
+          svgBar.appendChild(label);
         });
       }
 
-      // 2. Trendline plot logic
+      // 6. Draw Trendline Plot
       const alertTrend = document.getElementById('empty-trend-alert');
       const svgLine = document.getElementById('svg-line-chart');
       svgLine.querySelectorAll('.gen-el').forEach(el => el.remove());
 
-      const attemptsCount = database.attempts.length;
-      if (attemptsCount < 2) {
+      if (totalAttempted < 2) {
         alertTrend.classList.remove('hidden');
         svgLine.classList.add('hidden');
       } else {
         alertTrend.classList.add('hidden');
         svgLine.classList.remove('hidden');
 
-        const displayAttempts = database.attempts.slice(-8); // display last 8 attempts
-        const stepX = 320 / (displayAttempts.length - 1);
+        const displayAttempts = courseAttempts.slice(-8); 
+        const stepX = 320 / Math.max(1, (displayAttempts.length - 1));
         let pathD = "";
 
         displayAttempts.forEach((attempt, idx) => {
           const isCorrect = (attempt.selectedIndex === attempt.correctIndex);
-          const y = isCorrect ? 30 : 90; // High for correct, low for incorrect
+          const y = isCorrect ? 30 : 90; 
           const x = 15 + idx * stepX;
 
           if (idx === 0) {
@@ -884,7 +1145,6 @@
             pathD += ` L ${x} ${y}`;
           }
 
-          // Add a circle dot at coordinates
           const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
           dot.setAttribute("cx", x);
           dot.setAttribute("cy", y);
@@ -894,7 +1154,6 @@
           svgLine.appendChild(dot);
         });
 
-        // Add line path to SVG
         const trendLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
         trendLine.setAttribute("d", pathD);
         trendLine.setAttribute("fill", "none");
@@ -904,16 +1163,11 @@
         svgLine.insertBefore(trendLine, svgLine.firstChild);
       }
 
-      // 3. Completeness Arc Gauge configuration
-      const attemptedWeeksCount = topics.filter(t => {
-        return database.attempts.some(a => a.weekName.toLowerCase() === t.topicName.toLowerCase());
-      }).length;
-
-      document.getElementById('completeness-ratio').innerText = `${attemptedWeeksCount} / ${topics.length}`;
-      
-      const gaugePercent = topics.length > 0 ? (attemptedWeeksCount / topics.length) : 0;
+      // 7. Completeness Gauge Arc
+      document.getElementById('completeness-ratio').innerText = `${attemptedWeeksCount} / ${filteredTopics.length}`;
+      const gaugePercent = filteredTopics.length > 0 ? (attemptedWeeksCount / filteredTopics.length) : 0;
       const gaugeArc = document.getElementById('gauge-arc');
-      const maxOffset = 110; // dasharray of arc path
+      const maxOffset = 110; 
       const dashoffset = maxOffset - (gaugePercent * maxOffset);
       
       setTimeout(() => {
