@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
+import com.example.ui.theme.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -47,8 +47,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
-                MainAppContent()
+            val model: QuizViewModel = viewModel()
+            val isLightTheme by model.isLightTheme.collectAsStateWithLifecycle()
+            MyApplicationTheme(darkTheme = !isLightTheme) {
+                MainAppContent(model)
             }
         }
     }
@@ -56,12 +58,12 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppContent() {
-    val model: QuizViewModel = viewModel()
+fun MainAppContent(model: QuizViewModel = viewModel()) {
     val screenState by model.screenState.collectAsStateWithLifecycle()
     val activeQuizState by model.activeQuiz.collectAsStateWithLifecycle()
     val allBookmarks by model.allBookmarks.collectAsStateWithLifecycle()
     val currentStreak by model.currentStreak.collectAsStateWithLifecycle()
+    val isLightTheme by model.isLightTheme.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -126,6 +128,23 @@ fun MainAppContent() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        // Theme Toggle icon button elegantly integrated
+                        IconButton(
+                            onClick = { model.toggleTheme() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(BentoDarkAccent, RoundedCornerShape(100))
+                                .border(1.dp, BentoBorder, RoundedCornerShape(100))
+                                .testTag("theme_toggle_btn")
+                        ) {
+                            Icon(
+                                imageVector = if (isLightTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                contentDescription = "Toggle Theme",
+                                tint = BentoAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
                         // Bookmark icon button elegantly integrated
                         IconButton(
                             onClick = { model.navigateTo(ScreenState.BOOKMARKS) },
@@ -284,7 +303,7 @@ fun CourseSelectorTabs(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Civil Litigation",
+                        text = "Civil",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (activeCourse == "civil") BentoSurface else BentoSubtext
                     )
@@ -302,18 +321,55 @@ fun CourseSelectorTabs(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Corporate Practice",
+                        text = "Corporate",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (activeCourse == "corporate") BentoSurface else BentoSubtext
+                    )
+                }
+
+                // Property button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (activeCourse == "property") BentoAccent else Color.Transparent)
+                        .clickable { onCourseSelected("property") }
+                        .padding(vertical = 8.dp)
+                        .testTag("course_property_tab"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Property",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (activeCourse == "property") BentoSurface else BentoSubtext
+                    )
+                }
+
+                // Ethics button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (activeCourse == "ethics") BentoAccent else Color.Transparent)
+                        .clickable { onCourseSelected("ethics") }
+                        .padding(vertical = 8.dp)
+                        .testTag("course_ethics_tab"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Ethics",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (activeCourse == "ethics") BentoSurface else BentoSubtext
                     )
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = if (activeCourse == "civil") {
-                    "Verbatim scenario training for High Court civil jurisdiction, actions, pleadings, and trials."
-                } else {
-                    "Active recall for company formation, governance, corporate restructuring, and winding up."
+                text = when (activeCourse) {
+                    "civil" -> "Verbatim scenario training for High Court civil jurisdiction, actions, pleadings, and trials."
+                    "corporate" -> "Active recall for company formation, governance, corporate restructuring, and winding up."
+                    "property" -> "Verbatim practice for deeds, leases, sale of land, mortgages, wills, and personal representatives."
+                    else -> "Active testing on Professional Ethics, regulatory bodies, and rules of professional conduct verbatim."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = BentoSubtext,
@@ -424,7 +480,12 @@ fun HomeScreen(model: QuizViewModel) {
                                 color = BentoSubtext
                             )
                             Text(
-                                text = if (currentCourse == "civil") "Civil Litigation" else "Corporate Practice",
+                                text = when (currentCourse) {
+                                    "civil" -> "Civil Litigation"
+                                    "corporate" -> "Corporate Practice"
+                                    "property" -> "Property Law"
+                                    else -> "Professional Ethics"
+                                },
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White
                             )
@@ -1306,16 +1367,19 @@ fun ActiveQuizScreen(model: QuizViewModel, state: ActiveQuizState?) {
                         contentAlignment = Alignment.Center
                     ) {
                         val scorePercent = (state.correctAnswersCount.toFloat() / state.questions.size.toFloat())
+                        val bentoDarkAccentColor = BentoDarkAccent
+                        val correctColor = CorrectGreen
+                        val incorrectColor = IncorrectRed
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             drawArc(
-                                color = BentoDarkAccent,
+                                color = bentoDarkAccentColor,
                                 startAngle = 0f,
                                 sweepAngle = 360f,
                                 useCenter = false,
                                 style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
                             )
                             drawArc(
-                                color = if (scorePercent >= 0.6f) CorrectGreen else IncorrectRed,
+                                color = if (scorePercent >= 0.6f) correctColor else incorrectColor,
                                 startAngle = -90f,
                                 sweepAngle = 360f * scorePercent,
                                 useCenter = false,
@@ -1918,20 +1982,22 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                 )
                             }
                             // Premium Circular Ring representing ARRS / 1000
+                            val bentoDarkAccentColor = BentoDarkAccent
+                            val bentoAccentColor = BentoAccent
                             Box(
                                 modifier = Modifier.size(64.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Canvas(modifier = Modifier.fillMaxSize()) {
                                     drawArc(
-                                        color = BentoDarkAccent,
+                                        color = bentoDarkAccentColor,
                                         startAngle = 0f,
                                         sweepAngle = 360f,
                                         useCenter = false,
                                         style = Stroke(width = 6.dp.toPx())
                                     )
                                     drawArc(
-                                        color = BentoAccent,
+                                        color = bentoAccentColor,
                                         startAngle = -90f,
                                         sweepAngle = 360f * (arrsScore / 1000f),
                                         useCenter = false,
@@ -2096,6 +2162,9 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                 color = BentoSubtext
                             )
                             Spacer(modifier = Modifier.height(16.dp))
+                            val bentoBorderColor = BentoBorder
+                            val bentoDarkAccentColor = BentoDarkAccent
+                            val bentoAccentColor = BentoAccent
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -2108,7 +2177,7 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
 
                                     // Draw background line
                                     drawLine(
-                                        color = BentoBorder,
+                                        color = bentoBorderColor,
                                         start = Offset(0f, maxHeight),
                                         end = Offset(size.width, maxHeight),
                                         strokeWidth = 2f
@@ -2118,14 +2187,14 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                         val x = index * (barWidth + space) + 12.dp.toPx()
                                         // Background bento container bar
                                         drawRect(
-                                            color = BentoDarkAccent,
+                                            color = bentoDarkAccentColor,
                                             topLeft = Offset(x, 0f),
                                             size = androidx.compose.ui.geometry.Size(barWidth, maxHeight)
                                         )
                                         // Highlighted accuracy bar
                                         val barHeight = maxHeight * (weekAnalytic.accuracyPercent / 100f)
                                         drawRect(
-                                            color = BentoAccent,
+                                            color = bentoAccentColor,
                                             topLeft = Offset(x, maxHeight - barHeight),
                                             size = androidx.compose.ui.geometry.Size(barWidth, barHeight)
                                         )
@@ -2186,6 +2255,7 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                         )
                                     }
                                 } else {
+                                    val bentoAccentColor = BentoAccent
                                     Canvas(modifier = Modifier.fillMaxSize()) {
                                         val maxH = size.height - 12.dp.toPx()
                                         val points = attempts.take(10).reversed()
@@ -2200,7 +2270,7 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
 
                                             if (lastOffset != Offset.Unspecified) {
                                                 drawLine(
-                                                    color = BentoAccent,
+                                                    color = bentoAccentColor,
                                                     start = lastOffset,
                                                     end = currentOffset,
                                                     strokeWidth = 3.dp.toPx()
@@ -2258,16 +2328,18 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                 modifier = Modifier.size(100.dp),
                                 contentAlignment = Alignment.Center
                             ) {
+                                val bentoDarkAccentColor = BentoDarkAccent
+                                val warmAmberColor = WarmAmber
                                 Canvas(modifier = Modifier.fillMaxSize()) {
                                     drawArc(
-                                        color = BentoDarkAccent,
+                                        color = bentoDarkAccentColor,
                                         startAngle = 135f,
                                         sweepAngle = 270f,
                                         useCenter = false,
                                         style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
                                     )
                                     drawArc(
-                                        color = WarmAmber,
+                                        color = warmAmberColor,
                                         startAngle = 135f,
                                         sweepAngle = 270f * completenessPercent,
                                         useCenter = false,

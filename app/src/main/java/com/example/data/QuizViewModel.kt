@@ -51,6 +51,16 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
     val currentCourse = MutableStateFlow("corporate")
     val activeQuiz = MutableStateFlow<ActiveQuizState?>(null)
 
+    // Theme state (with persistence in SharedPreferences)
+    private val sharedPrefs = application.getSharedPreferences("app_settings", android.content.Context.MODE_PRIVATE)
+    val isLightTheme = MutableStateFlow(sharedPrefs.getBoolean("is_light_theme", false))
+
+    fun toggleTheme() {
+        val newValue = !isLightTheme.value
+        isLightTheme.value = newValue
+        sharedPrefs.edit().putBoolean("is_light_theme", newValue).apply()
+    }
+
     // Room Database Observables
     val allAttempts: StateFlow<List<QuizAttempt>>
     val allBookmarks: StateFlow<List<BookmarkedQuestion>>
