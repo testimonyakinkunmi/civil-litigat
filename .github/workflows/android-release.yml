@@ -57,6 +57,15 @@ jobs:
         # Required by AGP to locate the Android SDK. The setup-android action
         # sets ANDROID_HOME but Gradle still wants local.properties.
         run: |
+        android {
+  // ... existing configuration ...
+  
+  sourceSets {
+    getByName("debug") {
+      kotlin.srcDirs("build/generated/ksp/debug/kotlin", "build/generated/ksp/debug/java")
+    }
+  }
+}
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           cat local.properties
 
