@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Legal Recall"
+rootProject.name = "Law S Help"
 
 include(":app")

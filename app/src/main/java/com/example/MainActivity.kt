@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -41,6 +42,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
 import com.example.ui.theme.*
+import com.example.ui.NotificationsScreen
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +71,24 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
     val currentStreak by model.currentStreak.collectAsStateWithLifecycle()
     val isLightTheme by model.isLightTheme.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                model.loadNotifications()
+            }
+        }
+        val filter = IntentFilter(NotificationSystemManager.ACTION_REFRESH_UI)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -83,7 +107,7 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                 ) {
                     Column {
                         Text(
-                            text = "ELITE EDTECH",
+                            text = "STUDY COMPANION",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
@@ -92,7 +116,7 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Law Architect",
+                            text = "Law S Help",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 22.sp
@@ -157,6 +181,23 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                             Icon(
                                 imageVector = Icons.Default.Bookmark,
                                 contentDescription = "Bookmarks",
+                                tint = BentoAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        // Smart Study Notifications button elegantly integrated
+                        IconButton(
+                            onClick = { model.navigateTo(ScreenState.NOTIFICATIONS) },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(BentoDarkAccent, RoundedCornerShape(100))
+                                .border(1.dp, BentoBorder, RoundedCornerShape(100))
+                                .testTag("nav_notifications_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Study Alerts",
                                 tint = BentoAccent,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -236,6 +277,20 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                     modifier = Modifier.testTag("nav_weeks")
                 )
                 NavigationBarItem(
+                    selected = screenState == ScreenState.EXAM,
+                    onClick = { model.navigateTo(ScreenState.EXAM) },
+                    icon = { Icon(Icons.Default.Assignment, contentDescription = "Exam Mode") },
+                    label = { Text("Exam", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = BentoHighlight,
+                        selectedTextColor = BentoAccent,
+                        indicatorColor = BentoAccent,
+                        unselectedIconColor = BentoSubtext,
+                        unselectedTextColor = BentoSubtext
+                    ),
+                    modifier = Modifier.testTag("nav_exam")
+                )
+                NavigationBarItem(
                     selected = screenState == ScreenState.ANALYTICS,
                     onClick = { model.navigateTo(ScreenState.ANALYTICS) },
                     icon = { Icon(Icons.Default.Analytics, contentDescription = "Insights") },
@@ -264,6 +319,8 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                 ScreenState.QUIZ -> ActiveQuizScreen(model = model, state = activeQuizState)
                 ScreenState.BOOKMARKS -> BookmarksScreen(model = model, bookmarks = allBookmarks)
                 ScreenState.ANALYTICS -> AnalyticsInsightsScreen(model = model)
+                ScreenState.EXAM -> ExamScreen(model = model)
+                ScreenState.NOTIFICATIONS -> NotificationsScreen(model = model)
             }
         }
     }
@@ -284,6 +341,7 @@ fun CourseSelectorTabs(
         border = BorderStroke(1.dp, BentoBorder)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            // First Row of 3 items
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -291,76 +349,58 @@ fun CourseSelectorTabs(
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Civil button
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (activeCourse == "civil") BentoAccent else Color.Transparent)
-                        .clickable { onCourseSelected("civil") }
-                        .padding(vertical = 8.dp)
-                        .testTag("course_civil_tab"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Civil",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (activeCourse == "civil") BentoSurface else BentoSubtext
-                    )
+                listOf(
+                    "civil" to "Civil",
+                    "corporate" to "Corporate",
+                    "property" to "Property"
+                ).forEach { (key, label) ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (activeCourse == key) BentoAccent else Color.Transparent)
+                            .clickable { onCourseSelected(key) }
+                            .padding(vertical = 8.dp)
+                            .testTag("course_${key}_tab"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (activeCourse == key) BentoSurface else BentoSubtext
+                        )
+                    }
                 }
-
-                // Corporate button
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (activeCourse == "corporate") BentoAccent else Color.Transparent)
-                        .clickable { onCourseSelected("corporate") }
-                        .padding(vertical = 8.dp)
-                        .testTag("course_corporate_tab"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Corporate",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (activeCourse == "corporate") BentoSurface else BentoSubtext
-                    )
-                }
-
-                // Property button
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (activeCourse == "property") BentoAccent else Color.Transparent)
-                        .clickable { onCourseSelected("property") }
-                        .padding(vertical = 8.dp)
-                        .testTag("course_property_tab"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Property",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (activeCourse == "property") BentoSurface else BentoSubtext
-                    )
-                }
-
-                // Ethics button
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (activeCourse == "ethics") BentoAccent else Color.Transparent)
-                        .clickable { onCourseSelected("ethics") }
-                        .padding(vertical = 8.dp)
-                        .testTag("course_ethics_tab"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Ethics",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = if (activeCourse == "ethics") BentoSurface else BentoSubtext
-                    )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            // Second Row of 2 items
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BentoHighlight, RoundedCornerShape(12.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf(
+                    "ethics" to "Ethics",
+                    "criminal" to "Criminal"
+                ).forEach { (key, label) ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (activeCourse == key) BentoAccent else Color.Transparent)
+                            .clickable { onCourseSelected(key) }
+                            .padding(vertical = 8.dp)
+                            .testTag("course_${key}_tab"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (activeCourse == key) BentoSurface else BentoSubtext
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -369,7 +409,9 @@ fun CourseSelectorTabs(
                     "civil" -> "Verbatim scenario training for High Court civil jurisdiction, actions, pleadings, and trials."
                     "corporate" -> "Active recall for company formation, governance, corporate restructuring, and winding up."
                     "property" -> "Verbatim practice for deeds, leases, sale of land, mortgages, wills, and personal representatives."
-                    else -> "Active testing on Professional Ethics, regulatory bodies, and rules of professional conduct verbatim."
+                    "ethics" -> "Active testing on Professional Ethics, regulatory bodies, and rules of professional conduct verbatim."
+                    "criminal" -> "Verbatim active recall for Criminal Litigation, trial procedures, constitutional safeguards, and appeals."
+                    else -> ""
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = BentoSubtext,
@@ -484,7 +526,9 @@ fun HomeScreen(model: QuizViewModel) {
                                     "civil" -> "Civil Litigation"
                                     "corporate" -> "Corporate Practice"
                                     "property" -> "Property Law"
-                                    else -> "Professional Ethics"
+                                    "ethics" -> "Professional Ethics"
+                                    "criminal" -> "Criminal Litigation"
+                                    else -> "Criminal Litigation"
                                 },
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color.White
@@ -925,6 +969,20 @@ fun HomeScreen(model: QuizViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Curriculum Topic Selector Card (Left side)
+                val currentCourseNameUpper = when (currentCourse) {
+                    "civil" -> "CIVIL LIT"
+                    "corporate" -> "CORP PRAC"
+                    "property" -> "PROP LAW"
+                    "ethics" -> "ETHICS"
+                    "criminal" -> "CRIM LIT"
+                    else -> "CIVIL LIT"
+                }
+                val currentCourseTopics = model.topics.filter { it.category.equals(currentCourse, ignoreCase = true) }
+                val minWeek = currentCourseTopics.firstOrNull()?.let { extractWeekNumber(it.topicName) } ?: 1
+                val maxWeek = currentCourseTopics.lastOrNull()?.let { extractWeekNumber(it.topicName) } ?: 12
+                val rangeLabel = "$currentCourseNameUpper: WK $minWeek-$maxWeek"
+                val homeTopicsToShow = currentCourseTopics.take(3)
+
                 Card(
                     modifier = Modifier
                         .weight(1f)
@@ -940,27 +998,31 @@ fun HomeScreen(model: QuizViewModel) {
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "CIVIL LIT: WK 3-19",
+                            text = rangeLabel,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
                             ),
-                            color = BentoSubtext
+                            color = BentoSubtext,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
 
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf(
-                                "W5" to "Pleadings",
-                                "W8" to "Discovery",
-                                "W12" to "Summ. Judg."
-                            ).forEachIndexed { index, (wk, name) ->
-                                val isSelected = index == 2
+                            homeTopicsToShow.forEachIndexed { index, topic ->
+                                val isSelected = index == 0 // highlight the first one to prompt interaction
+                                val wkNum = extractWeekNumber(topic.topicName)
+                                val wkLabel = "W$wkNum"
+                                val cleanName = formatWeekTitle(topic.topicName, topic.category)
+                                    .substringAfter(":")
+                                    .trim()
+
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(if (isSelected) BentoAccent else BentoDarkAccent)
-                                        .clickable { model.startTopicQuiz(if(wk == "W5") "Week 5: Pleadings" else if(wk == "W8") "Week 8: Discovery" else "Week 12: Summary Judgment") }
+                                        .clickable { model.startTopicQuiz(topic.topicName) }
                                         .padding(4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -971,7 +1033,7 @@ fun HomeScreen(model: QuizViewModel) {
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            wk,
+                                            wkLabel,
                                             fontSize = 8.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (isSelected) BentoAccent else Color.White
@@ -979,7 +1041,7 @@ fun HomeScreen(model: QuizViewModel) {
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = name,
+                                        text = cleanName,
                                         fontSize = 10.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         color = if (isSelected) BentoHighlight else Color.White,
@@ -1211,12 +1273,78 @@ fun WeekSelectScreen(model: QuizViewModel) {
             onCourseSelected = { model.switchCourse(it) }
         )
 
+        val isShuffleEnabled by model.isShuffleEnabled.collectAsStateWithLifecycle()
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+                .testTag("shuffle_selector_card"),
+            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, BentoBorder)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shuffle,
+                        contentDescription = "Shuffle Icon",
+                        tint = if (isShuffleEnabled) BentoAccent else BentoSubtext,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Shuffle Questions",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Randomize question sequence when launching a quiz.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BentoSubtext
+                        )
+                    }
+                }
+                Switch(
+                    checked = isShuffleEnabled,
+                    onCheckedChange = { model.toggleShuffleEnabled(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = BentoHighlight,
+                        checkedTrackColor = BentoAccent,
+                        uncheckedThumbColor = BentoSubtext,
+                        uncheckedTrackColor = BentoHighlight
+                    ),
+                    modifier = Modifier.testTag("shuffle_switch")
+                )
+            }
+        }
+
+        val sortedTopics = remember(model.topics, currentCourse) {
+            model.topics
+                .filter { it.category.equals(currentCourse, ignoreCase = true) }
+                .sortedWith(
+                    compareBy<TopicBundle> { extractWeekNumber(it.topicName) }
+                        .thenBy { it.topicName }
+                )
+        }
+
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            items(model.topics.filter { it.category.equals(currentCourse, ignoreCase = true) }) { topic ->
+            items(sortedTopics) { topic ->
                 val analytic = analytics.find { it.weekName.equals(topic.topicName, ignoreCase = true) }
                 val hasAttempted = analytic != null && analytic.totalAnswered > 0
                 val accuracyVal = if (hasAttempted) analytic!!.accuracyPercent.toInt() else 0
@@ -1243,7 +1371,7 @@ fun WeekSelectScreen(model: QuizViewModel) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = topic.topicName,
+                                    text = formatWeekTitle(topic.topicName, topic.category),
                                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White
                                 )
@@ -1308,342 +1436,530 @@ fun WeekSelectScreen(model: QuizViewModel) {
 fun ActiveQuizScreen(model: QuizViewModel, state: ActiveQuizState?) {
     if (state == null) return
 
-    val currentQuiz = state.questions[state.currentIndex]
     val context = LocalContext.current
-    var isBookmarkedState by remember(currentQuiz.scenario) { mutableStateOf(false) }
+    val allBookmarks by model.allBookmarks.collectAsStateWithLifecycle()
+    var showSubmitConfirmation by remember { mutableStateOf(false) }
 
-    LaunchedEffect(currentQuiz.scenario) {
-        isBookmarkedState = model.isBookmarked(currentQuiz.scenario)
+    // Start automated, mandatory timer decrement
+    LaunchedEffect(state.completed) {
+        if (!state.completed) {
+            while (true) {
+                kotlinx.coroutines.delay(1000L)
+                model.decrementQuizTime()
+            }
+        }
     }
 
-    if (state.completed) {
-        // Quiz complete score card
-        Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BentoBg)
+            .padding(16.dp)
+    ) {
+        // Top Navigation Header
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Card(
+            IconButton(
+                onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, BentoBorder),
-                colors = CardDefaults.cardColors(containerColor = BentoSurface)
+                    .size(40.dp)
+                    .background(BentoDarkAccent, RoundedCornerShape(12.dp))
+                    .testTag("quiz_back_btn")
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.EmojiEvents,
-                        contentDescription = "Events Trophy",
-                        tint = WarmAmber,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Session Complete",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = state.title,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BentoSubtext,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
 
-                    // Score Wheel
-                    Box(
-                        modifier = Modifier.size(120.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val scorePercent = (state.correctAnswersCount.toFloat() / state.questions.size.toFloat())
-                        val bentoDarkAccentColor = BentoDarkAccent
-                        val correctColor = CorrectGreen
-                        val incorrectColor = IncorrectRed
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawArc(
-                                color = bentoDarkAccentColor,
-                                startAngle = 0f,
-                                sweepAngle = 360f,
-                                useCenter = false,
-                                style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
-                            )
-                            drawArc(
-                                color = if (scorePercent >= 0.6f) correctColor else incorrectColor,
-                                startAngle = -90f,
-                                sweepAngle = 360f * scorePercent,
-                                useCenter = false,
-                                style = Stroke(width = 10.dp.toPx(), cap = StrokeCap.Round)
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${state.correctAnswersCount}/${state.questions.size}",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "${(scorePercent * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = BentoSubtext
-                            )
-                        }
+            Text(
+                text = state.title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+
+            Spacer(modifier = Modifier.size(40.dp))
+        }
+
+        // Automatic Timer & Progress Indicator
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, BentoBorder)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = "Timer",
+                            tint = if (state.timeLeftSeconds < 60 && !state.completed) IncorrectRed else BentoAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (state.completed) "Session Ended" else "Mandatory Countdown",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    val mins = state.timeLeftSeconds / 60
+                    val secs = state.timeLeftSeconds % 60
+                    val timerStr = String.format("%02d:%02d", mins, secs)
 
+                    Text(
+                        text = if (state.completed) "Completed" else timerStr,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        ),
+                        color = if (state.timeLeftSeconds < 60 && !state.completed) IncorrectRed else BentoAccent
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Time progress bar
+                val timeProgress = if (state.totalTimeSeconds > 0 && !state.completed) {
+                    state.timeLeftSeconds.toFloat() / state.totalTimeSeconds.toFloat()
+                } else 1f
+
+                LinearProgressIndicator(
+                    progress = { timeProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(100)),
+                    color = if (state.timeLeftSeconds < 60 && !state.completed) IncorrectRed else BentoAccent,
+                    trackColor = BentoDarkAccent
+                )
+            }
+        }
+
+        // Main Continuous Feed
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Results summary card if completed
+            if (state.completed) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, BentoBorder),
+                        colors = CardDefaults.cardColors(containerColor = BentoSurface)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = "Events Trophy",
+                                tint = WarmAmber,
+                                modifier = Modifier.size(56.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Grade Summary",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val answeredCount = state.answers.count { it != -1 }
+                            Text(
+                                text = "You answered $answeredCount of ${state.questions.size} questions.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BentoSubtext,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Score circular visual
+                            Box(
+                                modifier = Modifier.size(100.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val scorePercent = if (state.questions.isNotEmpty()) {
+                                    state.correctAnswersCount.toFloat() / state.questions.size.toFloat()
+                                } else 0f
+                                val darkAccentColor = BentoDarkAccent
+                                val strokeColor = if (scorePercent >= 0.6f) CorrectGreen else IncorrectRed
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawArc(
+                                        color = darkAccentColor,
+                                        startAngle = 0f,
+                                        sweepAngle = 360f,
+                                        useCenter = false,
+                                        style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+                                    )
+                                    drawArc(
+                                        color = strokeColor,
+                                        startAngle = -90f,
+                                        sweepAngle = 360f * scorePercent,
+                                        useCenter = false,
+                                        style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${state.correctAnswersCount}/${state.questions.size}",
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "${(scorePercent * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = BentoSubtext
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Retry / Close Buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { model.restartQuiz() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent),
+                                    shape = RoundedCornerShape(100),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Retake", color = BentoAccent, fontWeight = FontWeight.Bold, maxLines = 1)
+                                }
+
+                                val nextTopicName = model.getNextTopicName(state.title)
+                                if (nextTopicName != null) {
+                                    Button(
+                                        onClick = { model.startTopicQuiz(nextTopicName) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
+                                        shape = RoundedCornerShape(100),
+                                        modifier = Modifier.weight(1.3f)
+                                    ) {
+                                        Text("Next Week", color = BentoHighlight, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
+                                }
+
+                                Button(
+                                    onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent),
+                                    shape = RoundedCornerShape(100),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Exit", color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Questions continuous list
+            items(state.questions.size) { qIdx ->
+                val question = state.questions[qIdx]
+                val selectedAnswer = state.answers.getOrElse(qIdx) { -1 }
+                val isBookmarked = allBookmarks.any { it.scenario == question.scenario }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, BentoBorder)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        // Card Header (Question index & Bookmark)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "QUESTION ${qIdx + 1} OF ${state.questions.size}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = BentoAccent
+                            )
+
+                            IconButton(
+                                onClick = {
+                                    model.toggleBookmark(question) { _ -> }
+                                },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(BentoDarkAccent, RoundedCornerShape(10.dp))
+                            ) {
+                                Icon(
+                                    imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                                    contentDescription = "Bookmark Question",
+                                    tint = BentoAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Verbatim Case Scenario
+                        Text(
+                            text = "CASE SCENARIO",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = BentoSubtext
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = question.scenario,
+                            style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Render options
+                        question.options.forEachIndexed { oIdx, optionText ->
+                            val isSelected = selectedAnswer == oIdx
+                            val isCorrectOption = question.correctIndex == oIdx
+
+                            val cardBg = when {
+                                state.completed && isCorrectOption -> CorrectGreen.copy(alpha = 0.2f)
+                                state.completed && isSelected && !isCorrectOption -> IncorrectRed.copy(alpha = 0.2f)
+                                isSelected -> BentoAccent.copy(alpha = 0.15f)
+                                else -> BentoDarkAccent.copy(alpha = 0.3f)
+                            }
+
+                            val borderStroke = when {
+                                state.completed && isCorrectOption -> BorderStroke(2.dp, CorrectGreen)
+                                state.completed && isSelected && !isCorrectOption -> BorderStroke(2.dp, IncorrectRed)
+                                isSelected -> BorderStroke(2.dp, BentoAccent)
+                                else -> BorderStroke(1.dp, BentoBorder.copy(alpha = 0.5f))
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 5.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(cardBg)
+                                    .border(borderStroke, RoundedCornerShape(16.dp))
+                                    .clickable(enabled = !state.completed) {
+                                        model.selectQuizOption(qIdx, oIdx)
+                                    }
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(
+                                            if (isSelected) BentoAccent else BentoDarkAccent
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = when (oIdx) { 0 -> "A" 1 -> "B" 2 -> "C" else -> "D" },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) BentoHighlight else Color.White
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = optionText,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (state.completed) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    if (isCorrectOption) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Correct",
+                                            tint = CorrectGreen,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    } else if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Incorrect",
+                                            tint = IncorrectRed,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Verbatim Correction panel if completed
+                        if (state.completed) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            val isCorrect = selectedAnswer == question.correctIndex
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = BentoDarkAccent),
+                                border = BorderStroke(1.dp, if (isCorrect) CorrectGreen else IncorrectRed)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text(
+                                        text = if (isCorrect) "✓ CORRECT ANSWER KEY" else "✗ RECALL MISS / CORRECTION REQUIRED",
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = if (isCorrect) CorrectGreen else IncorrectRed
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = question.verbatimCorrection.ifEmpty { "Refer to Criminal Litigation rules. Correct option is index: ${question.correctIndex + 1}" },
+                                        style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp),
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Footer Submit Button / Score navigation buttons
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (!state.completed) {
+                    val answeredCount = state.answers.count { it != -1 }
+                    Button(
+                        onClick = { showSubmitConfirmation = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .testTag("quiz_submit_btn"),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BentoAccent)
+                    ) {
+                        Text(
+                            text = "SUBMIT QUIZ ($answeredCount/${state.questions.size})",
+                            color = BentoHighlight,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                } else {
+                    val nextTopicName = model.getNextTopicName(state.title)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Button(
-                            onClick = { model.restartQuiz() },
-                            colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent),
-                            shape = RoundedCornerShape(100),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Retry", color = BentoAccent, fontWeight = FontWeight.Bold)
-                        }
-                        Button(
-                            onClick = { model.navigateTo(ScreenState.HOME) },
-                            colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
-                            shape = RoundedCornerShape(100),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Close", color = BentoHighlight, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        // Active Quiz HUD
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // Header progress
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(BentoDarkAccent, RoundedCornerShape(100))
-                ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-                Text(
-                    text = "${state.currentIndex + 1} / ${state.questions.size}",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                IconButton(
-                    onClick = {
-                        model.toggleBookmark(currentQuiz) { added ->
-                            isBookmarkedState = added
-                        }
-                    },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(BentoDarkAccent, RoundedCornerShape(100))
-                ) {
-                    Icon(
-                        imageVector = if (isBookmarkedState) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                        contentDescription = "Bookmark",
-                        tint = BentoAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            LinearProgressIndicator(
-                progress = { (state.currentIndex + 1).toFloat() / state.questions.size.toFloat() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(100)),
-                color = BentoAccent,
-                trackColor = BentoDarkAccent
-            )
-
-            // Scrollable Content for long scenarios
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = BentoSurface),
-                        shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, BentoBorder)
-                    ) {
-                        Column(modifier = Modifier.padding(18.dp)) {
-                            Text(
-                                text = "VERBATIM CASE SCENARIO",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = BentoAccent
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = currentQuiz.scenario,
-                                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-
-                // Verbatim choice options
-                items(currentQuiz.options.size) { oIdx ->
-                    val optionText = currentQuiz.options[oIdx]
-                    val isSelected = state.selectedOptionIndex == oIdx
-                    val cardBg = when {
-                        state.isAnswered && oIdx == currentQuiz.correctIndex -> CorrectGreen.copy(alpha = 0.2f)
-                        state.isAnswered && isSelected && oIdx != currentQuiz.correctIndex -> IncorrectRed.copy(alpha = 0.2f)
-                        isSelected -> BentoAccent.copy(alpha = 0.15f)
-                        else -> BentoDarkAccent.copy(alpha = 0.3f)
-                    }
-                    val borderStroke = when {
-                        state.isAnswered && oIdx == currentQuiz.correctIndex -> BorderStroke(2.dp, CorrectGreen)
-                        state.isAnswered && isSelected && oIdx != currentQuiz.correctIndex -> BorderStroke(2.dp, IncorrectRed)
-                        isSelected -> BorderStroke(2.dp, BentoAccent)
-                        else -> BorderStroke(1.dp, BentoBorder.copy(alpha = 0.5f))
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(cardBg)
-                            .border(borderStroke, RoundedCornerShape(16.dp))
-                            .clickable(enabled = !state.isAnswered) {
-                                model.selectOption(oIdx)
-                            }
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
+                            onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
                             modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (isSelected) BentoAccent else BentoDarkAccent
-                                ),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .height(56.dp)
+                                .testTag("quiz_finish_btn"),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent)
                         ) {
                             Text(
-                                text = when (oIdx) { 0 -> "A" 1 -> "B" 2 -> "C" else -> "D" },
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "EXIT TO LIST",
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) BentoHighlight else Color.White
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = optionText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White
-                        )
-                    }
-                }
 
-                // If answered, display Correction panel instantly
-                if (state.isAnswered) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            shape = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = BentoDarkAccent
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (state.selectedOptionIndex == currentQuiz.correctIndex) CorrectGreen else IncorrectRed
-                            )
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                        if (nextTopicName != null) {
+                            Button(
+                                onClick = { model.startTopicQuiz(nextTopicName) },
+                                modifier = Modifier
+                                    .weight(1.3f)
+                                    .height(56.dp)
+                                    .testTag("quiz_next_week_btn"),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = BentoAccent)
+                            ) {
                                 Text(
-                                    text = if (state.selectedOptionIndex == currentQuiz.correctIndex) "✓ CORRECT ANSWER KEY" else "✗ RECALL MISS / CORRECTION REQUIRED",
-                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = if (state.selectedOptionIndex == currentQuiz.correctIndex) CorrectGreen else IncorrectRed
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = currentQuiz.verbatimCorrection.ifEmpty { "Refer to Civil Procedure rules. Correct option is index: ${currentQuiz.correctIndex + 1}" },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White
+                                    text = "NEXT WEEK'S QUIZ",
+                                    color = BentoHighlight,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium
                                 )
                             }
                         }
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Action Buttons
-            if (state.isAnswered) {
-                Button(
-                    onClick = { model.nextQuestion() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("quiz_next_btn"),
-                    shape = RoundedCornerShape(100),
-                    colors = ButtonDefaults.buttonColors(containerColor = BentoAccent)
-                ) {
-                    Text(
-                        text = if (state.currentIndex + 1 < state.questions.size) "Next Scenario" else "Finish Session",
-                        color = BentoHighlight,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            } else {
-                Button(
-                    onClick = { model.lockAndSubmitAnswer() },
-                    enabled = state.selectedOptionIndex != null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("quiz_submit_btn"),
-                    shape = RoundedCornerShape(100),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = BentoAccent,
-                        disabledContainerColor = BentoDarkAccent
-                    )
-                ) {
-                    Text(
-                        "Grade and view answer keys",
-                        color = if (state.selectedOptionIndex != null) BentoHighlight else BentoSubtext,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
+
+    // Submit confirmation Dialog
+    if (showSubmitConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showSubmitConfirmation = false },
+            title = {
+                Text(
+                    text = "Submit Quiz?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            text = {
+                val answeredCount = state.answers.count { it != -1 }
+                Text(
+                    text = "You have answered $answeredCount of ${state.questions.size} questions.\n\nAre you sure you want to submit your quiz and view the detailed correction key?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSubmitConfirmation = false
+                        model.submitQuiz()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
+                    shape = RoundedCornerShape(100)
+                ) {
+                    Text("Submit", color = BentoHighlight, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSubmitConfirmation = false }) {
+                    Text("Cancel", color = BentoAccent, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = BentoSurface,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 }
+
 
 @Composable
 fun BookmarksScreen(model: QuizViewModel, bookmarks: List<BookmarkedQuestion>) {
@@ -1714,7 +2030,7 @@ fun BookmarksScreen(model: QuizViewModel, bookmarks: List<BookmarkedQuestion>) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = bookmark.weekName,
+                                    text = formatWeekTitle(bookmark.weekName),
                                     fontWeight = FontWeight.Bold,
                                     color = BentoAccent,
                                     style = MaterialTheme.typography.bodyMedium
@@ -1843,7 +2159,7 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
             "MODERATE RECALL" -> BentoAccent
             else -> CorrectGreen
         }
-        Triple(topic.topicName, interval, badgeColor)
+        Triple(formatWeekTitle(topic.topicName, topic.category), interval, badgeColor)
     }
 
     Column(
@@ -2057,6 +2373,117 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                     fontWeight = FontWeight.Bold,
                                     color = WarmAmber
                                 )
+                            }
+                        }
+                    }
+
+                    // Subject Mastery Profile - Display performance metrics per subject individually
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, BentoBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Text(
+                                text = "SUBJECT MASTERY PROFILE",
+                                fontWeight = FontWeight.Bold,
+                                color = BentoAccent,
+                                fontSize = 11.sp,
+                                letterSpacing = 1.sp,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "Individual performance metrics to identify specific knowledge gaps.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BentoSubtext,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+
+                            val subjectsList = listOf(
+                                Triple("civil", "Civil Litigation", "⚖️"),
+                                Triple("corporate", "Corporate Practice", "🏢"),
+                                Triple("property", "Property Law", "📜"),
+                                Triple("ethics", "Professional Ethics", "🛡️"),
+                                Triple("criminal", "Criminal Litigation", "🚨")
+                            )
+
+                            subjectsList.forEachIndexed { sIdx, (catId, catLabel, catEmoji) ->
+                                val catTopics = model.topics.filter { it.category.equals(catId, ignoreCase = true) }
+                                val catAttempts = attempts.filter { attempt ->
+                                    catTopics.any { it.topicName.equals(attempt.weekName, ignoreCase = true) }
+                                }
+                                val catTotal = catAttempts.size
+                                val catCorrect = catAttempts.count { it.selectedIndex == it.correctIndex }
+                                val catAccuracy = if (catTotal > 0) (catCorrect.toFloat() / catTotal * 100f).toInt() else 0
+
+                                val statusText = when {
+                                    catTotal == 0 -> "UNTESTED"
+                                    catAccuracy < 50 -> "CRITICAL REFRESH"
+                                    catAccuracy < 75 -> "MODERATE RECALL"
+                                    else -> "STRONG RETENTION"
+                                }
+                                val statusColor = when (statusText) {
+                                    "UNTESTED" -> WarmAmber
+                                    "CRITICAL REFRESH" -> IncorrectRed
+                                    "MODERATE RECALL" -> BentoAccent
+                                    else -> CorrectGreen
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(catEmoji, fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = catLabel,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = if (catTotal > 0) "$catCorrect / $catTotal answered" else "0 questions answered",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = BentoSubtext
+                                            )
+                                        }
+                                    }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(statusColor.copy(alpha = 0.15f), RoundedCornerShape(100))
+                                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = if (catTotal > 0) "$catAccuracy% Accuracy" else "UNTESTED",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = statusColor
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (sIdx < subjectsList.size - 1) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 6.dp),
+                                        color = BentoBorder.copy(alpha = 0.5f),
+                                        thickness = 1.dp
+                                    )
+                                }
                             }
                         }
                     }
@@ -2411,6 +2838,38 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Button(
+                                onClick = { model.startSrsDueQuiz() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                                    .testTag("start_srs_due_quiz"),
+                                colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text("Practice Due SRS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BentoBg)
+                            }
+
+                            Button(
+                                onClick = { model.startWeakestPracticeQuiz() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(38.dp)
+                                    .testTag("start_weakest_practice_quiz"),
+                                colors = ButtonDefaults.buttonColors(containerColor = WarmAmber),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text("Weakest 20 Practice", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = BentoBg)
+                            }
+                        }
                     }
                 }
             }
@@ -2423,6 +2882,664 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Clear All Study Statistics", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExamScreen(model: QuizViewModel) {
+    val examState by model.activeExam.collectAsStateWithLifecycle()
+    var showSubmitConfirmation by remember { mutableStateOf(false) }
+
+    if (examState == null) {
+        // --- 100-Question Exam Welcome/Start Screen ---
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+        ) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("exam_welcome_card"),
+                    shape = RoundedCornerShape(28.dp),
+                    border = BorderStroke(1.dp, BentoBorder),
+                    colors = CardDefaults.cardColors(containerColor = BentoSurface)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "⚖️ EXAM SIMULATION",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            ),
+                            color = BentoAccent
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "100-Question Board Exam",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp
+                            ),
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "The ultimate test of competence for Nigerian Law School bar exams.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = BentoSubtext,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, BentoBorder),
+                    colors = CardDefaults.cardColors(containerColor = BentoDarkAccent)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "SIMULATION RULES & PARAMETERS",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = BentoAccent
+                        )
+
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text("📚", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "100-Question Comprehensive Mix",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Pulls exactly 20 questions from each of our 5 main subjects: Civil Litigation, Corporate Practice, Property Law, Professional Ethics, and Criminal Litigation.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = BentoSubtext
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text("🔀", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Full Shuffling Algorithm",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Questions from all subjects are randomly shuffled (using Fisher-Yates) for every new attempt to ensure a unique mix every single time.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = BentoSubtext
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text("⏱️", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Strict 60-Minute Countdown",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "A hard-coded timer of exactly 60 minutes with a persistent display. The exam is automatically submitted and graded once time expires.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = BentoSubtext
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text("📝", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Delayed Answer Evaluation",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "No instant feedback! The app hides correct/incorrect markers and detailed explanations until you explicitly click 'Submit Exam' at the bottom.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = BentoSubtext
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Button(
+                    onClick = { model.start100QuestionExam() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .testTag("start_exam_simulation_btn"),
+                    colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = "START EXAM SIMULATION",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        color = BentoBg
+                    )
+                }
+            }
+        }
+    } else {
+        val state = examState!!
+        val answeredCount = state.userAnswers.count { it != -1 }
+        val totalQuestions = state.questions.size
+        
+        LaunchedEffect(state.isSubmitted) {
+            if (!state.isSubmitted) {
+                while (true) {
+                    kotlinx.coroutines.delay(1000L)
+                    model.decrementExamTime()
+                }
+            }
+        }
+
+        if (showSubmitConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showSubmitConfirmation = false },
+                title = { Text("Submit Exam?", fontWeight = FontWeight.Bold) },
+                text = {
+                    Text("You have answered $answeredCount of $totalQuestions questions. Are you sure you want to submit your exam for immediate grading?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showSubmitConfirmation = false
+                            model.submitExam()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BentoAccent)
+                    ) {
+                        Text("Submit & Grade", color = BentoBg, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSubmitConfirmation = false }) {
+                        Text("Cancel", color = BentoAccent, fontWeight = FontWeight.Bold)
+                    }
+                }
+            )
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, BentoBorder),
+                colors = CardDefaults.cardColors(containerColor = BentoSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val mins = state.timeLeftSeconds / 60
+                            val secs = state.timeLeftSeconds % 60
+                            val timerStr = String.format("%02d:%02d", mins, secs)
+                            val isLowTime = state.timeLeftSeconds < 300
+                            
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = "Timer",
+                                tint = if (state.isSubmitted) BentoSubtext else if (isLowTime) IncorrectRed else BentoAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (state.isSubmitted) "EXAM COMPLETED" else timerStr,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                ),
+                                color = if (state.isSubmitted) Color.White else if (isLowTime) IncorrectRed else Color.White
+                            )
+                        }
+
+                        Text(
+                            text = if (state.isSubmitted) {
+                                "Score: ${state.correctCount} / $totalQuestions"
+                            } else {
+                                "Answered: $answeredCount / $totalQuestions"
+                            },
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            color = BentoAccent
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val progressValue = if (state.isSubmitted) {
+                        state.correctCount.toFloat() / totalQuestions.toFloat()
+                    } else {
+                        answeredCount.toFloat() / totalQuestions.toFloat()
+                    }
+                    
+                    LinearProgressIndicator(
+                        progress = { progressValue },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(100)),
+                        color = if (state.isSubmitted) {
+                            if (progressValue >= 0.7f) CorrectGreen else if (progressValue >= 0.4f) WarmAmber else IncorrectRed
+                        } else BentoAccent,
+                        trackColor = BentoDarkAccent
+                    )
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp)
+            ) {
+                if (state.isSubmitted) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("exam_results_summary_card"),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder),
+                            colors = CardDefaults.cardColors(containerColor = BentoDarkAccent)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val scorePercent = (state.correctCount.toFloat() / totalQuestions.toFloat()) * 100f
+                                
+                                Text(
+                                    text = "SIMULATION SCORE REPORT",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    ),
+                                    color = BentoSubtext
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Text(
+                                    text = "${scorePercent.toInt()}%",
+                                    style = MaterialTheme.typography.displayMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 48.sp
+                                    ),
+                                    color = if (scorePercent >= 70f) CorrectGreen else if (scorePercent >= 40f) WarmAmber else IncorrectRed
+                                )
+                                Text(
+                                    text = "${state.correctCount} Correct of $totalQuestions",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                val badgeText = when {
+                                    scorePercent >= 70f -> "PASSED (Excellent - Honors Class)"
+                                    scorePercent >= 40f -> "PASSED (Satisfactory)"
+                                    else -> "FAILED (Review and Retake Needed)"
+                                }
+                                val badgeBg = when {
+                                    scorePercent >= 70f -> CorrectGreen.copy(alpha = 0.2f)
+                                    scorePercent >= 40f -> WarmAmber.copy(alpha = 0.2f)
+                                    else -> IncorrectRed.copy(alpha = 0.2f)
+                                }
+                                val badgeColor = when {
+                                    scorePercent >= 70f -> CorrectGreen
+                                    scorePercent >= 40f -> WarmAmber
+                                    else -> IncorrectRed
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(badgeBg, RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = badgeText,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = badgeColor
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = "SUBJECT-WISE BREAKDOWN",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = BentoAccent,
+                                    modifier = Modifier.align(Alignment.Start)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                val subjectCategories = listOf(
+                                    "civil" to "Civil Litigation",
+                                    "corporate" to "Corporate Practice",
+                                    "property" to "Property Law",
+                                    "ethics" to "Professional Ethics",
+                                    "criminal" to "Criminal Litigation"
+                                )
+
+                                subjectCategories.forEach { (catKey, catName) ->
+                                    val catQuestions = state.questions.filter { q ->
+                                        val topicBundle = model.topics.find { it.topicName.equals(q.weekName, ignoreCase = true) }
+                                        topicBundle?.category?.equals(catKey, ignoreCase = true) ?: false
+                                    }
+                                    
+                                    val totalCatCount = catQuestions.size
+                                    if (totalCatCount > 0) {
+                                        val catCorrectCount = catQuestions.count { q ->
+                                            val qIdx = state.questions.indexOf(q)
+                                            state.userAnswers[qIdx] == q.correctIndex
+                                        }
+                                        val catPercent = (catCorrectCount.toFloat() / totalCatCount.toFloat()) * 100f
+
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = catName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = "$catCorrectCount / $totalCatCount (${catPercent.toInt()}%)",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = if (catPercent >= 70f) CorrectGreen else if (catPercent >= 40f) WarmAmber else IncorrectRed
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Button(
+                                        onClick = { model.start100QuestionExam() },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("RETAKE EXAM", fontWeight = FontWeight.Bold, color = BentoBg)
+                                    }
+
+                                    Button(
+                                        onClick = { model.resetExam() },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = BentoHighlight),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("EXIT", fontWeight = FontWeight.Bold, color = BentoAccent)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                itemsIndexed(state.questions) { index, question ->
+                    val userSelected = state.userAnswers[index]
+                    val isCorrect = userSelected == question.correctIndex
+                    
+                    val topicBundle = model.topics.find { it.topicName.equals(question.weekName, ignoreCase = true) }
+                    val category = topicBundle?.category ?: "unknown"
+                    
+                    val categoryLabel = when (category) {
+                        "civil" -> "CIVIL LITIGATION"
+                        "corporate" -> "CORPORATE PRACTICE"
+                        "property" -> "PROPERTY LAW"
+                        "ethics" -> "PROFESSIONAL ETHICS"
+                        "criminal" -> "CRIMINAL LITIGATION"
+                        else -> "COMPREHENSIVE"
+                    }
+
+                    val categoryColor = when (category) {
+                        "civil" -> androidx.compose.ui.graphics.Color(0xFF3498DB)
+                        "corporate" -> androidx.compose.ui.graphics.Color(0xFF9B59B6)
+                        "property" -> androidx.compose.ui.graphics.Color(0xFF1ABC9C)
+                        "ethics" -> androidx.compose.ui.graphics.Color(0xFFF1C40F)
+                        "criminal" -> androidx.compose.ui.graphics.Color(0xFFE67E22)
+                        else -> BentoAccent
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("exam_question_card_${index}"),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (state.isSubmitted) {
+                                if (isCorrect) CorrectGreen.copy(alpha = 0.5f) else IncorrectRed.copy(alpha = 0.5f)
+                            } else BentoBorder
+                        ),
+                        colors = CardDefaults.cardColors(containerColor = BentoSurface)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Question ${index + 1} of $totalQuestions",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = BentoSubtext
+                                )
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .background(categoryColor.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                        .border(1.dp, categoryColor.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = categoryLabel,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 9.sp,
+                                            letterSpacing = 0.5.sp
+                                        ),
+                                        color = categoryColor
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = question.scenario,
+                                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
+                                color = Color.White
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            question.options.forEachIndexed { oIdx, option ->
+                                val isOptionSelected = userSelected == oIdx
+                                
+                                val optionBg = when {
+                                    state.isSubmitted && oIdx == question.correctIndex -> CorrectGreen.copy(alpha = 0.15f)
+                                    state.isSubmitted && isOptionSelected && oIdx != question.correctIndex -> IncorrectRed.copy(alpha = 0.15f)
+                                    isOptionSelected -> BentoAccent.copy(alpha = 0.15f)
+                                    else -> BentoDarkAccent.copy(alpha = 0.3f)
+                                }
+
+                                val optionBorder = when {
+                                    state.isSubmitted && oIdx == question.correctIndex -> BorderStroke(2.dp, CorrectGreen)
+                                    state.isSubmitted && isOptionSelected && oIdx != question.correctIndex -> BorderStroke(2.dp, IncorrectRed)
+                                    isOptionSelected -> BorderStroke(2.dp, BentoAccent)
+                                    else -> BorderStroke(1.dp, BentoBorder.copy(alpha = 0.5f))
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(optionBg)
+                                        .border(optionBorder, RoundedCornerShape(12.dp))
+                                        .clickable(enabled = !state.isSubmitted) {
+                                            model.selectExamOption(index, oIdx)
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(
+                                                if (isOptionSelected) BentoAccent else BentoDarkAccent
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = when(oIdx) { 0 -> "A" 1 -> "B" 2 -> "C" else -> "D" },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isOptionSelected) BentoHighlight else Color.White
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Text(
+                                        text = option,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    if (state.isSubmitted) {
+                                        if (oIdx == question.correctIndex) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Correct Option",
+                                                tint = CorrectGreen,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        } else if (isOptionSelected) {
+                                            Icon(
+                                                imageVector = Icons.Default.Cancel,
+                                                contentDescription = "Your Incorrect Option",
+                                                tint = IncorrectRed,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (state.isSubmitted) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = BentoDarkAccent),
+                                    border = BorderStroke(1.dp, BentoBorder)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Info,
+                                                contentDescription = "Explanation Info",
+                                                tint = BentoAccent,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "VERBATIM SOLUTION WHY:",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = BentoAccent
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = question.verbatimCorrection.ifEmpty { "Procedural guidelines apply." },
+                                            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!state.isSubmitted) {
+                    item {
+                        Button(
+                            onClick = { showSubmitConfirmation = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .testTag("submit_exam_btn"),
+                            colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                text = "SUBMIT EXAM FOR GRADING",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                ),
+                                color = BentoBg
+                            )
+                        }
+                    }
                 }
             }
         }
