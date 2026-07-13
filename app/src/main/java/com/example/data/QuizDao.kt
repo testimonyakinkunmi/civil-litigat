@@ -33,4 +33,17 @@ interface QuizDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM bookmarked_questions WHERE scenario = :scenario)")
     suspend fun isBookmarked(scenario: String): Boolean
+
+    // Passive Notifications Operations
+    @Query("SELECT * FROM passive_notifications ORDER BY timestamp DESC")
+    fun getAllNotifications(): Flow<List<PassiveNotification>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNotification(notification: PassiveNotification)
+
+    @Query("UPDATE passive_notifications SET isRead = 1 WHERE id = :id")
+    suspend fun markNotificationAsRead(id: Long)
+
+    @Query("DELETE FROM passive_notifications")
+    suspend fun clearAllNotifications()
 }

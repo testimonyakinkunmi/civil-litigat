@@ -31,6 +31,19 @@ class QuizRepository(
 ) {
     val allAttempts: Flow<List<QuizAttempt>> = quizDao.getAllAttempts()
     val allBookmarks: Flow<List<BookmarkedQuestion>> = quizDao.getAllBookmarks()
+    val allNotifications: Flow<List<PassiveNotification>> = quizDao.getAllNotifications()
+
+    suspend fun saveNotification(notification: PassiveNotification) {
+        quizDao.insertNotification(notification)
+    }
+
+    suspend fun markNotificationAsRead(id: Long) {
+        quizDao.markNotificationAsRead(id)
+    }
+
+    suspend fun clearNotifications() {
+        quizDao.clearAllNotifications()
+    }
 
     // Load static quiz questions from local assets
     fun loadVerbatimTopics(): List<TopicBundle> {
@@ -85,12 +98,13 @@ class QuizRepository(
         return topics
     }
 
-    suspend fun saveAttempt(weekName: String, scenario: String, selectedIndex: Int, correctIndex: Int) {
+    suspend fun saveAttempt(weekName: String, scenario: String, selectedIndex: Int, correctIndex: Int, responseTimeMs: Long = 0L) {
         val attempt = QuizAttempt(
             weekName = weekName,
             scenario = scenario,
             selectedIndex = selectedIndex,
-            correctIndex = correctIndex
+            correctIndex = correctIndex,
+            responseTimeMs = responseTimeMs
         )
         quizDao.insertAttempt(attempt)
         updateStreakOnQuizCompletion()

@@ -11,163 +11,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-fun extractWeekNumber(rawName: String): Int {
-    val cleanLower = rawName.trim().lowercase()
-    val matchResult = """\b(?:week|wk|w)\s*(\d+)""".toRegex().find(cleanLower)
-    if (matchResult != null) {
-        return matchResult.groupValues[1].toIntOrNull() ?: 9999
-    }
-    val fallbackResult = """\d+""".toRegex().find(cleanLower)
-    return fallbackResult?.value?.toIntOrNull() ?: 9999
-}
-
-fun formatWeekTitle(rawName: String, category: String = ""): String {
-    val clean = rawName.trim()
-    val cleanLower = clean.lowercase()
-
-    // 1. Check property
-    if (category.equals("property", ignoreCase = true) || cleanLower.contains("deeds") || cleanLower.contains("leases") || cleanLower.contains("sale of land") || cleanLower.contains("attorney") || cleanLower.contains("mortgages") || cleanLower.contains("probate") || cleanLower.contains("wills") || cleanLower.contains("assent")) {
-        return when {
-            cleanLower.contains("week 1") -> "Week 1: Deeds & Documents"
-            cleanLower.contains("week 2") -> "Week 2: Leases & Tenancies"
-            cleanLower.contains("week 3") -> "Week 3: Sale of Land"
-            cleanLower.contains("week 4") && cleanLower.contains("applicable") -> "Week 4: Property Laws"
-            cleanLower.contains("week 4") && cleanLower.contains("taxation") -> "Week 4: Property Taxation"
-            cleanLower.contains("week 4") -> "Week 4: Property Overview"
-            cleanLower.contains("week 5") -> "Week 5: Power of Attorney"
-            cleanLower.contains("week 6") -> "Week 6: Mortgages & Charges"
-            cleanLower.contains("week 7") -> "Week 7: Land Registration"
-            cleanLower.contains("week 8") -> "Week 8: Probate Practice"
-            cleanLower.contains("week 9") -> "Week 9: Wills & Codicils"
-            cleanLower.contains("week 10") -> "Week 10: Property Billing"
-            cleanLower.contains("week 11") -> "Week 11: Property Taxation"
-            cleanLower.contains("week 12") -> "Week 12: Personal Representatives"
-            else -> clean
-        }
-    }
-
-    // 2. Check corporate
-    if (category.equals("corporate", ignoreCase = true) || cleanLower.contains("corporate") || cleanLower.contains("company") || (cleanLower.startsWith("week") && (cleanLower.endsWith("general") || cleanLower.contains("general")) && !category.equals("civil", ignoreCase = true) && !category.equals("ethics", ignoreCase = true))) {
-        return when {
-            cleanLower.contains("week 3") -> "Week 3: Company Law Intro"
-            cleanLower.contains("week 4") -> "Week 4: Company Promotion"
-            cleanLower.contains("week 5") -> "Week 5: Company Registration"
-            cleanLower.contains("week 6") -> "Week 6: Company Operations"
-            cleanLower.contains("week 7") -> "Week 7: Share Capital"
-            cleanLower.contains("week 8") -> "Week 8: Directors & Secretaries"
-            cleanLower.contains("week 9") -> "Week 9: Foreign Participation"
-            cleanLower.contains("week 10") -> "Week 10: Company Winding Up"
-            cleanLower.contains("week 11") -> "Week 11: Public Companies"
-            cleanLower.contains("week 12") -> "Week 12: Corporate Practice"
-            cleanLower.contains("week 13") -> "Week 13: Joint Ventures"
-            cleanLower.contains("week 14") -> "Week 14: Non-Profit Orgs"
-            cleanLower.contains("week 15") -> "Week 15: Specialized Corporate Forms"
-            cleanLower.contains("week 16") -> "Week 16: Corporate Restructuring"
-            cleanLower.contains("week 17") -> "Week 17: Insolvency & Receivership"
-            else -> clean
-        }
-    }
-
-    // 3. Check criminal
-    if (category.equals("criminal", ignoreCase = true) || cleanLower.contains("criminal") || cleanLower.contains("proceedings") || cleanLower.contains("safeguards") || cleanLower.contains("arrest") || cleanLower.contains("misjoinder") || cleanLower.contains("duplicity") || cleanLower.contains("arraignment") || cleanLower.contains("appeals")) {
-        return when {
-            cleanLower.contains("week 1") -> "Week 1: Introduction to Criminal Litigation"
-            cleanLower.contains("week 2") -> "Week 2: Criminal Proceedings"
-            cleanLower.contains("week 3") -> "Week 3: Court Jurisdiction & Venues"
-            cleanLower.contains("week 4") -> "Week 4: Investigation & Interviews"
-            cleanLower.contains("week 5") -> "Week 5: Arrests & Searches"
-            cleanLower.contains("week 6") -> "Week 6: Constitutional Safeguards"
-            cleanLower.contains("week 7") -> "Week 7: Bail Pending Trial"
-            cleanLower.contains("week 8") && cleanLower.contains("offenders") -> "Week 8: Misjoinder of Offenders"
-            cleanLower.contains("week 8") && cleanLower.contains("offences") -> "Week 8: Misjoinder of Offences"
-            cleanLower.contains("week 8") && cleanLower.contains("duplicity") -> "Week 8: Duplicity Rule"
-            cleanLower.contains("week 8") && cleanLower.contains("authority") -> "Week 8: Drafting Authority"
-            cleanLower.contains("week 8") && cleanLower.contains("ambiguity") -> "Week 8: Ambiguity Rule"
-            cleanLower.contains("week 8") && cleanLower.contains("amendment") -> "Week 8: Amendment Procedure"
-            cleanLower.contains("week 8") && cleanLower.contains("post-amendment requirements") -> "Week 8: Post-Amendment Procedure"
-            cleanLower.contains("week 8") && cleanLower.contains("ethics") -> "Week 8: Professional Ethics"
-            cleanLower.contains("week 8") && cleanLower.contains("objections") -> "Week 8: Objections to Charges"
-            cleanLower.contains("week 8") && cleanLower.contains("forms") -> "Week 8: Statutory Forms"
-            cleanLower.contains("week 8") && cleanLower.contains("formatting") -> "Week 8: Charge Formatting"
-            cleanLower.contains("week 8") && cleanLower.contains("ambiguity in charges") -> "Week 8: Ambiguity in Charges"
-            cleanLower.contains("week 8") && cleanLower.contains("information") -> "Week 8: Information vs Charge"
-            cleanLower.contains("week 8") && cleanLower.contains("joinder") -> "Week 8: Joinder of Offenders"
-            cleanLower.contains("week 8") && cleanLower.contains("post-amendment procedure") -> "Week 8: Post-Amendment Procedure"
-            cleanLower.contains("week 8") -> "Week 8: Charges & Procedures"
-            cleanLower.contains("week 9") -> "Week 9: Judgment & Sentencing"
-            cleanLower.contains("week 10") -> "Week 10: Witness Examination"
-            cleanLower.contains("week 11") -> "Week 11: Defence Case"
-            cleanLower.contains("week 12") -> "Week 12: Arraignment & Attendance"
-            cleanLower.contains("week 13") -> "Week 13: Trial Prep & Evidence"
-            cleanLower.contains("week 14") -> "Week 14: Criminal Appeals"
-            else -> clean
-        }
-    }
-
-    // 4. Check ethics
-    if (category.equals("ethics", ignoreCase = true) || cleanLower.contains("ethics") || cleanLower.contains("professional conduct") || cleanLower.contains("trust accounts") || cleanLower.contains("discipline")) {
-        return when {
-            cleanLower.contains("week 1") -> "Week 1: Ethics Introduction"
-            cleanLower.contains("week 2") -> "Week 2: Regulatory Bodies"
-            cleanLower.contains("week 3") -> "Week 3: Call to Bar & Practice"
-            cleanLower.contains("week 4") -> "Week 4: Professional Conduct"
-            cleanLower.contains("week 5") -> "Week 5: Advocate Duties"
-            cleanLower.contains("week 6") -> "Week 6: Duties to Client"
-            cleanLower.contains("week 7") -> "Week 7: Duties to Court"
-            cleanLower.contains("week 8") -> "Week 8: Duties to Fellow Lawyers"
-            cleanLower.contains("week 9") -> "Week 9: Professional Fees"
-            cleanLower.contains("week 10") -> "Week 10: Trust Accounts"
-            cleanLower.contains("week 11") -> "Week 11: Advertising & Solicitation"
-            cleanLower.contains("week 12") -> "Week 12: Improper Attractions"
-            cleanLower.contains("week 13") -> "Week 13: Professional Discipline"
-            cleanLower.contains("week 14") -> "Week 14: Rules of Professional Conduct"
-            cleanLower.contains("week 15") -> "Week 15: Contempt and Sanctions"
-            cleanLower.contains("week 16") -> "Week 16: Global Ethics Codes"
-            cleanLower.contains("week 17") -> "Week 17: Corporate & Public Ethics"
-            else -> clean
-        }
-    }
-
-    // 5. Check civil
-    if (category.equals("civil", ignoreCase = true) || cleanLower.contains("civil") || cleanLower.contains("jurisdiction") || cleanLower.contains("pleadings") || cleanLower.contains("discovery") || cleanLower.contains("summary judgment") || cleanLower.contains("parties")) {
-        return when {
-            cleanLower.contains("week 3") -> "Week 3: Courts & Jurisdiction"
-            cleanLower.contains("week 4") -> "Week 4: Pre-Action & ADR"
-            cleanLower.contains("week 5") -> "Week 5: Pleadings"
-            cleanLower.contains("week 6") -> "Week 6: Parties & Joinder"
-            cleanLower.contains("week 7") -> "Week 7: Service of Processes"
-            cleanLower.contains("week 8") -> "Week 8: Discovery"
-            cleanLower.contains("week 9") -> "Week 9: Interlocutory Motions"
-            cleanLower.contains("week 10") -> "Week 10: Summary Judgment"
-            cleanLower.contains("week 11") -> "Week 11: Pre-Trial Conferences"
-            cleanLower.contains("week 12") -> "Week 12: Trials and Evidence"
-            cleanLower.contains("week 13") -> "Week 13: Summary Judgments"
-            cleanLower.contains("week 14") -> "Week 14: Enforcement of Judgments"
-            cleanLower.contains("week 15") -> "Week 15: Appeals & Revision"
-            cleanLower.contains("week 16") -> "Week 16: Constitutional Practice"
-            cleanLower.contains("week 17") -> "Week 17: Special Procedures"
-            cleanLower.contains("week 18") -> "Week 18: Injunctions"
-            cleanLower.contains("week 19") -> "Week 19: Costs & Orders"
-            else -> clean
-        }
-    }
-
-    // Fallback based purely on week parsing
-    val weekRegex = """.*week\s*(\d+).*""".toRegex()
-    val matchResult = weekRegex.find(cleanLower)
-    if (matchResult != null) {
-        val num = matchResult.groupValues[1]
-        val rest = clean.substringAfter("-").trim().substringAfter(":").trim()
-        if (rest.isNotEmpty() && rest != "General" && !rest.equals("week $num", ignoreCase = true)) {
-            return "Week $num: $rest"
-        } else {
-            return "Week $num: General Study"
-        }
-    }
-
-    return clean
-}
-
 // Screen Navigation State for seamless transitions
 enum class ScreenState {
     HOME,
@@ -175,8 +18,7 @@ enum class ScreenState {
     QUIZ,
     BOOKMARKS,
     ANALYTICS,
-    EXAM,
-    NOTIFICATIONS
+    EXAM
 }
 
 // Struct to represent a week's analytics
@@ -198,7 +40,8 @@ data class ActiveQuizState(
     val correctAnswersCount: Int = 0,
     val completed: Boolean = false,
     val timeLeftSeconds: Int = 0,
-    val totalTimeSeconds: Int = 0
+    val totalTimeSeconds: Int = 0,
+    val elapsedAtClick: List<Int> = List(questions.size) { 0 } // stores seconds elapsed when question was clicked
 )
 
 // Active Exam State holder for the 100-Question Exam Simulation
@@ -208,20 +51,12 @@ data class ActiveExamState(
     val isSubmitted: Boolean = false,
     val timeLeftSeconds: Int = 3600, // 60 minutes
     val correctCount: Int = 0,
-    val timeTakenSeconds: Int = 0
+    val timeTakenSeconds: Int = 0,
+    val elapsedAtClick: List<Int> = List(questions.size) { 0 } // stores seconds elapsed when question was clicked
 )
 
 class QuizViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: QuizRepository
-
-    val notificationManager = NotificationSystemManager(application)
-    val scheduledNotifications = MutableStateFlow<List<StudyNotification>>(emptyList())
-    val deliveredNotifications = MutableStateFlow<List<StudyNotification>>(emptyList())
-
-    fun loadNotifications() {
-        scheduledNotifications.value = notificationManager.getScheduledNotifications()
-        deliveredNotifications.value = notificationManager.getDeliveredHistory()
-    }
 
     // Raw verbatim topics
     val topics: List<TopicBundle>
@@ -285,6 +120,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
     // Room Database Observables
     val allAttempts: StateFlow<List<QuizAttempt>>
     val allBookmarks: StateFlow<List<BookmarkedQuestion>>
+    val allNotifications: StateFlow<List<PassiveNotification>>
     
     // Streaks
     val currentStreak = MutableStateFlow(0)
@@ -305,15 +141,19 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
     val overallAccuracy: StateFlow<Float>
     val totalCompletedQuizzes: StateFlow<Int>
 
+    // Advanced Analytics Engine States
+    val topicMasteryIndex: StateFlow<Map<String, Float>>
+    val ebbinghausRetention: StateFlow<Map<String, Float>>
+    val cognitiveVelocity: StateFlow<Float>
+    val cognitiveFatigueAlert: StateFlow<String?>
+    val examPassProbability: StateFlow<Float>
+
     init {
         val database = AppDatabase.getDatabase(application)
         repository = QuizRepository(application, database.quizDao())
 
-        // Load courses verbatim from local json files and sort them strictly in chronological order
-        topics = repository.loadVerbatimTopics().sortedWith(
-            compareBy<TopicBundle> { extractWeekNumber(it.topicName) }
-                .thenBy { it.topicName }
-        )
+        // Load courses verbatim from local json files
+        topics = repository.loadVerbatimTopics()
 
         // Room lists state maps
         allAttempts = repository.allAttempts.stateIn(
@@ -323,6 +163,12 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         allBookmarks = repository.allBookmarks.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+        allNotifications = repository.allNotifications.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
@@ -383,13 +229,184 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = 0
         )
 
+        // Item Response Theory (IRT) Inspired Mastery Weighting
+        topicMasteryIndex = combine(allAttempts, currentCourse) { attempts, course ->
+            val courseTopics = topics.filter { it.category.equals(course, ignoreCase = true) }
+            courseTopics.associate { topic ->
+                var totalWeight = 0f
+                var correctWeight = 0f
+                
+                topic.quizzes.forEach { quiz ->
+                    var weight = 3.0f
+                    if (quiz.scenario.length > 150) {
+                        weight += 1.0f
+                    }
+                    val quizAttempts = attempts.filter { it.scenario == quiz.scenario }
+                    val failedCount = quizAttempts.count { it.selectedIndex != it.correctIndex }
+                    weight += minOf(1.5f, failedCount * 0.5f)
+                    
+                    totalWeight += weight
+                    if (quizAttempts.isEmpty()) {
+                        correctWeight += weight * 0.5f // Baseline untested
+                    } else {
+                        val latest = quizAttempts.sortedBy { it.timestamp }.last()
+                        if (latest.selectedIndex == latest.correctIndex) {
+                            correctWeight += weight
+                        }
+                    }
+                }
+                val mastery = if (totalWeight > 0f) (correctWeight / totalWeight) * 100f else 0f
+                topic.topicName to mastery
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap()
+        )
+
+        // Ebbinghaus Time-Decay Retention Modeling
+        ebbinghausRetention = combine(allAttempts, currentCourse) { attempts, course ->
+            val courseTopics = topics.filter { it.category.equals(course, ignoreCase = true) }
+            val now = System.currentTimeMillis()
+            courseTopics.associate { topic ->
+                var retentionSum = 0f
+                if (topic.quizzes.isEmpty()) {
+                    topic.topicName to 0f
+                } else {
+                    topic.quizzes.forEach { quiz ->
+                        val quizAttempts = attempts.filter { it.scenario == quiz.scenario }.sortedBy { it.timestamp }
+                        if (quizAttempts.isEmpty()) {
+                            retentionSum += 50f
+                        } else {
+                            val latest = quizAttempts.last()
+                            if (latest.selectedIndex != latest.correctIndex) {
+                                retentionSum += 15f
+                            } else {
+                                val elapsedMs = now - latest.timestamp
+                                val elapsedMinutes = elapsedMs / 60000f
+                                val elapsedDays = elapsedMinutes / 4f
+                                
+                                var streakCount = 0
+                                for (i in quizAttempts.indices.reversed()) {
+                                    if (quizAttempts[i].selectedIndex == quizAttempts[i].correctIndex) {
+                                        streakCount++
+                                    } else {
+                                        break
+                                    }
+                                }
+                                val lambda = 0.15f / maxOf(1, streakCount)
+                                val ret = 100f * kotlin.math.exp(-lambda * elapsedDays)
+                                retentionSum += maxOf(15f, ret)
+                            }
+                        }
+                    }
+                    topic.topicName to (retentionSum / topic.quizzes.size)
+                }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap()
+        )
+
+        // Latency and Cognitive Velocity Tracking
+        cognitiveVelocity = combine(allAttempts, currentCourse) { attempts, course ->
+            val courseTopics = topics.filter { it.category.equals(course, ignoreCase = true) }
+            val courseAttempts = attempts.filter { att ->
+                courseTopics.any { it.topicName.equals(att.weekName, ignoreCase = true) }
+            }
+            if (courseAttempts.isEmpty()) {
+                75f
+            } else {
+                var speedSum = 0f
+                courseAttempts.forEach { att ->
+                    val t = att.responseTimeMs / 1000f
+                    val isCorrect = att.selectedIndex == att.correctIndex
+                    val score = when {
+                        isCorrect && t in 4f..12f -> 100f
+                        isCorrect && t > 12f -> maxOf(60f, 100f - (t - 12f) * 2f)
+                        isCorrect && t < 4f -> 95f
+                        !isCorrect && t < 4f -> 30f
+                        !isCorrect && t > 12f -> 45f
+                        else -> 50f
+                    }
+                    speedSum += score
+                }
+                speedSum / courseAttempts.size
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 75f
+        )
+
+        // Cognitive Fatigue Threshold Detection (60 questions / 35 minutes thresholds)
+        cognitiveFatigueAlert = allAttempts.map { attempts ->
+            val sessionAttempts = attempts.filter { System.currentTimeMillis() - it.timestamp < 2 * 3600 * 1000 }.sortedBy { it.timestamp }
+            if (sessionAttempts.size >= 10) {
+                val halfSize = sessionAttempts.size / 2
+                val earlyAttempts = sessionAttempts.take(halfSize)
+                val lateAttempts = sessionAttempts.takeLast(halfSize)
+                
+                val earlyErrorRate = earlyAttempts.count { it.selectedIndex != it.correctIndex }.toFloat() / earlyAttempts.size
+                val lateErrorRate = lateAttempts.count { it.selectedIndex != it.correctIndex }.toFloat() / lateAttempts.size
+                
+                val errorIncrease = (lateErrorRate - earlyErrorRate) * 100f
+                val cumulativeTimeMs = sessionAttempts.sumOf { it.responseTimeMs }
+                val cumulativeMinutes = cumulativeTimeMs / 60000f
+                
+                if (cumulativeMinutes >= 35f && errorIncrease >= 15f) {
+                    "Cognitive Fatigue detected after 35 minutes of testing! Recall error rate rose sharply by ${errorIncrease.toInt()}% in the second half of your study session. Take a 10-minute break to reset your mind!"
+                } else if (sessionAttempts.size >= 60 && errorIncrease >= 15f) {
+                    "Cognitive Fatigue detected at Question 60 threshold! Continuous high cognitive load has caused your error rate to spike by ${errorIncrease.toInt()}%. Take a breather!"
+                } else if (errorIncrease >= 20f) {
+                    "High Cognitive Load detected! Your error rate spiked by ${errorIncrease.toInt()}% in your recent attempts. Consider starting a Study Break Micro-Quiz or taking a rest!"
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+        // Composite Exam Pass Probability Dashboard Indicator
+        examPassProbability = combine(topicMasteryIndex, ebbinghausRetention, cognitiveVelocity, currentStreak) { mastery, retention, velocity, streak ->
+            val avgMastery = if (mastery.isNotEmpty()) mastery.values.average().toFloat() else 0f
+            val avgRetention = if (retention.isNotEmpty()) retention.values.average().toFloat() else 50f
+            val avgVelocity = velocity
+            
+            var prob = (avgMastery * 0.5f) + (avgRetention * 0.3f) + (avgVelocity * 0.2f)
+            if (streak > 3) {
+                prob += 5f
+            }
+            maxOf(5f, minOf(99f, prob))
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 50f
+        )
+
         // Launch initial coroutines
         viewModelScope.launch {
             repository.checkAndRefreshStreak()
             refreshStreakState()
             generateNewMicroQuiz()
-            notificationManager.checkAndDeliverMissedScheduledNotifications()
-            loadNotifications()
+            
+            // Random Timing / Passive Notification scheduler (Max 4 times daily)
+            // To simulate randomized triggers across the day passively, we run a routine check
+            while (true) {
+                // Every 30 minutes, there is a small random chance to trigger a notification passively,
+                // capped at 4 notifications per day
+                kotlinx.coroutines.delay(30 * 60 * 1000L)
+                val recentCount = allNotifications.value.count { System.currentTimeMillis() - it.timestamp < 24 * 3600 * 1000 }
+                if (recentCount < 4 && (0..10).random() < 3) {
+                    simulatePassiveNotification()
+                }
+            }
         }
     }
 
@@ -448,7 +465,7 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             }
             val totalSeconds = questions.size * 36
             activeQuiz.value = ActiveQuizState(
-                title = formatWeekTitle(topicBundle.topicName, topicBundle.category),
+                title = topicBundle.topicName,
                 questions = questions,
                 answers = List(questions.size) { -1 },
                 timeLeftSeconds = totalSeconds,
@@ -457,20 +474,6 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             resetTimer()
             navigateTo(ScreenState.QUIZ)
         }
-    }
-
-    // Returns the name of the next chronological topic in the current active course
-    fun getNextTopicName(currentTopicTitle: String): String? {
-        val course = currentCourse.value
-        val sortedTopics = topics.filter { it.category.equals(course, ignoreCase = true) }
-        val currentIndex = sortedTopics.indexOfFirst {
-            it.topicName.equals(currentTopicTitle, ignoreCase = true) ||
-            formatWeekTitle(it.topicName, it.category).equals(currentTopicTitle, ignoreCase = true)
-        }
-        if (currentIndex != -1 && currentIndex + 1 < sortedTopics.size) {
-            return sortedTopics[currentIndex + 1].topicName
-        }
-        return null
     }
 
     // Real Spaced Repetition (SRS) due questions practice
@@ -645,8 +648,16 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         val newAnswers = exam.userAnswers.toMutableList()
         newAnswers[questionIndex] = optionIndex
         
+        val currentElapsed = exam.timeTakenSeconds
+        val newElapsed = exam.elapsedAtClick.toMutableList()
+        while (newElapsed.size <= questionIndex) {
+            newElapsed.add(0)
+        }
+        newElapsed[questionIndex] = currentElapsed
+        
         activeExam.value = exam.copy(
-            userAnswers = newAnswers
+            userAnswers = newAnswers,
+            elapsedAtClick = newElapsed
         )
     }
 
@@ -674,16 +685,28 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         val questionsToSave = exam.questions.zip(exam.userAnswers)
         
         viewModelScope.launch {
-            questionsToSave.forEach { (question, selected) ->
+            questionsToSave.forEachIndexed { qIdx, (question, selected) ->
                 if (selected == question.correctIndex) {
                     correct++
                 }
-                // Save the attempt to Room database to update analytics
+                
+                var latencyMs = if (exam.elapsedAtClick.getOrElse(qIdx) { 0 } > 0) {
+                    val currentClick = exam.elapsedAtClick[qIdx].toLong() * 1000L
+                    val prevClick = if (qIdx > 0) exam.elapsedAtClick[qIdx - 1].toLong() * 1000L else 0L
+                    val computedDiff = currentClick - prevClick
+                    if (computedDiff > 0L) computedDiff else 8000L
+                } else {
+                    val totalTimeTaken = exam.timeTakenSeconds
+                    if (exam.questions.isNotEmpty()) totalTimeTaken.toLong() * 1000L / exam.questions.size else 6000L
+                }
+                latencyMs = maxOf(1000L, minOf(120000L, latencyMs))
+
                 repository.saveAttempt(
                     weekName = question.weekName,
                     scenario = question.scenario,
                     selectedIndex = selected,
-                    correctIndex = question.correctIndex
+                    correctIndex = question.correctIndex,
+                    responseTimeMs = latencyMs
                 )
             }
             refreshStreakState()
@@ -802,8 +825,16 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         val newAnswers = quiz.answers.toMutableList()
         newAnswers[questionIndex] = optionIndex
         
+        val currentElapsed = quiz.totalTimeSeconds - quiz.timeLeftSeconds
+        val newElapsed = quiz.elapsedAtClick.toMutableList()
+        while (newElapsed.size <= questionIndex) {
+            newElapsed.add(0)
+        }
+        newElapsed[questionIndex] = currentElapsed
+        
         activeQuiz.value = quiz.copy(
-            answers = newAnswers
+            answers = newAnswers,
+            elapsedAtClick = newElapsed
         )
     }
 
@@ -830,16 +861,28 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
         val questionsToSave = quiz.questions.zip(quiz.answers)
         
         viewModelScope.launch {
-            questionsToSave.forEach { (question, selected) ->
+            questionsToSave.forEachIndexed { qIdx, (question, selected) ->
                 if (selected == question.correctIndex) {
                     correct++
                 }
-                // Save the attempt to Room database to update analytics
+                
+                var latencyMs = if (quiz.elapsedAtClick.getOrElse(qIdx) { 0 } > 0) {
+                    val currentClick = quiz.elapsedAtClick[qIdx].toLong() * 1000L
+                    val prevClick = if (qIdx > 0) quiz.elapsedAtClick[qIdx - 1].toLong() * 1000L else 0L
+                    val computedDiff = currentClick - prevClick
+                    if (computedDiff > 0L) computedDiff else 8000L
+                } else {
+                    val totalTimeSpent = quiz.totalTimeSeconds - quiz.timeLeftSeconds
+                    if (quiz.questions.isNotEmpty()) totalTimeSpent.toLong() * 1000L / quiz.questions.size else 6000L
+                }
+                latencyMs = maxOf(1000L, minOf(120000L, latencyMs))
+
                 repository.saveAttempt(
                     weekName = question.weekName,
                     scenario = question.scenario,
                     selectedIndex = selected,
-                    correctIndex = question.correctIndex
+                    correctIndex = question.correctIndex,
+                    responseTimeMs = latencyMs
                 )
             }
             refreshStreakState()
@@ -857,6 +900,108 @@ class QuizViewModel(application: Application) : AndroidViewModel(application) {
             repository.clearAttempts()
             generateNewMicroQuiz()
             refreshStreakState()
+        }
+    }
+
+    // Passive Notifications API Simulation
+    fun simulatePassiveNotification() {
+        val attempts = allAttempts.value
+        val incorrectAttempts = attempts.filter { it.selectedIndex != it.correctIndex }
+        
+        val selectedQuiz: VerbatimQuiz
+        if (incorrectAttempts.isNotEmpty()) {
+            val randomAttempt = incorrectAttempts.random()
+            val allQuizzes = topics.flatMap { it.quizzes }
+            selectedQuiz = allQuizzes.find { it.scenario == randomAttempt.scenario } 
+                ?: allQuizzes.random()
+        } else {
+            val allQuizzes = topics.flatMap { it.quizzes }
+            if (allQuizzes.isNotEmpty()) {
+                selectedQuiz = allQuizzes.random()
+            } else {
+                return
+            }
+        }
+        
+        val ruleText = selectedQuiz.verbatimCorrection.ifEmpty {
+            "Verify court procedural timelines for this legal scenario. Option index ${selectedQuiz.correctIndex + 1} is legally binding."
+        }
+        
+        val topicNameShort = selectedQuiz.weekName.replace("WEEK ", "W").uppercase()
+        val title = "💡 Weak-Spot Review [$topicNameShort]"
+        val notificationBody = "Rule: $ruleText"
+        
+        viewModelScope.launch {
+            val lastNotifications = allNotifications.value
+            if (lastNotifications.isNotEmpty() && lastNotifications.first().ruleFact == ruleText) {
+                return@launch
+            }
+            
+            repository.saveNotification(
+                PassiveNotification(
+                    scenario = selectedQuiz.scenario,
+                    topicName = selectedQuiz.weekName,
+                    ruleFact = ruleText,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+            
+            showAndroidSystemNotification(title, notificationBody)
+        }
+    }
+
+    private fun showAndroidSystemNotification(title: String, body: String) {
+        val context = getApplication<Application>().applicationContext
+        val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val channelId = "passive_reviews"
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "Passive Reviews",
+                android.app.NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Smart pass-through recall rule cards"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+        
+        val intent = android.content.Intent(context, com.example.MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+            
+        try {
+            notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        } catch (e: Exception) {
+            android.util.Log.e("QuizViewModel", "Failed to post notification", e)
+        }
+    }
+
+    fun markNotificationAsRead(id: Long) {
+        viewModelScope.launch {
+            repository.markNotificationAsRead(id)
+        }
+    }
+
+    fun clearNotifications() {
+        viewModelScope.launch {
+            repository.clearNotifications()
         }
     }
 }

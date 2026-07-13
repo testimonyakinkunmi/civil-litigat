@@ -1,6 +1,6 @@
 {
-  "name": "Law S Help",
-  "description": "Offline study assistant and performance analytics application for law students studying Civil Litigation, Corporate Practice, Property Law, and Professional Ethics.",
+  "name": "Legal Recall",
+  "description": "Offline active recall and performance analytics application for law students studying Civil Litigation, Corporate Practice, Property Law, and Professional Ethics.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

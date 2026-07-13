@@ -42,11 +42,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
 import com.example.ui.theme.*
-import com.example.ui.NotificationsScreen
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,24 +66,6 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
     val currentStreak by model.currentStreak.collectAsStateWithLifecycle()
     val isLightTheme by model.isLightTheme.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context?, intent: Intent?) {
-                model.loadNotifications()
-            }
-        }
-        val filter = IntentFilter(NotificationSystemManager.ACTION_REFRESH_UI)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            context.registerReceiver(receiver, filter)
-        }
-        onDispose {
-            context.unregisterReceiver(receiver)
-        }
-    }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -107,7 +84,7 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                 ) {
                     Column {
                         Text(
-                            text = "STUDY COMPANION",
+                            text = "ELITE EDTECH",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
@@ -116,7 +93,7 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Law S Help",
+                            text = "Law Architect",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 22.sp
@@ -181,23 +158,6 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                             Icon(
                                 imageVector = Icons.Default.Bookmark,
                                 contentDescription = "Bookmarks",
-                                tint = BentoAccent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-
-                        // Smart Study Notifications button elegantly integrated
-                        IconButton(
-                            onClick = { model.navigateTo(ScreenState.NOTIFICATIONS) },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(BentoDarkAccent, RoundedCornerShape(100))
-                                .border(1.dp, BentoBorder, RoundedCornerShape(100))
-                                .testTag("nav_notifications_btn")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Study Alerts",
                                 tint = BentoAccent,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -320,7 +280,6 @@ fun MainAppContent(model: QuizViewModel = viewModel()) {
                 ScreenState.BOOKMARKS -> BookmarksScreen(model = model, bookmarks = allBookmarks)
                 ScreenState.ANALYTICS -> AnalyticsInsightsScreen(model = model)
                 ScreenState.EXAM -> ExamScreen(model = model)
-                ScreenState.NOTIFICATIONS -> NotificationsScreen(model = model)
             }
         }
     }
@@ -969,20 +928,6 @@ fun HomeScreen(model: QuizViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Curriculum Topic Selector Card (Left side)
-                val currentCourseNameUpper = when (currentCourse) {
-                    "civil" -> "CIVIL LIT"
-                    "corporate" -> "CORP PRAC"
-                    "property" -> "PROP LAW"
-                    "ethics" -> "ETHICS"
-                    "criminal" -> "CRIM LIT"
-                    else -> "CIVIL LIT"
-                }
-                val currentCourseTopics = model.topics.filter { it.category.equals(currentCourse, ignoreCase = true) }
-                val minWeek = currentCourseTopics.firstOrNull()?.let { extractWeekNumber(it.topicName) } ?: 1
-                val maxWeek = currentCourseTopics.lastOrNull()?.let { extractWeekNumber(it.topicName) } ?: 12
-                val rangeLabel = "$currentCourseNameUpper: WK $minWeek-$maxWeek"
-                val homeTopicsToShow = currentCourseTopics.take(3)
-
                 Card(
                     modifier = Modifier
                         .weight(1f)
@@ -998,31 +943,27 @@ fun HomeScreen(model: QuizViewModel) {
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = rangeLabel,
+                            text = "CIVIL LIT: WK 3-19",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
                             ),
-                            color = BentoSubtext,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = BentoSubtext
                         )
 
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            homeTopicsToShow.forEachIndexed { index, topic ->
-                                val isSelected = index == 0 // highlight the first one to prompt interaction
-                                val wkNum = extractWeekNumber(topic.topicName)
-                                val wkLabel = "W$wkNum"
-                                val cleanName = formatWeekTitle(topic.topicName, topic.category)
-                                    .substringAfter(":")
-                                    .trim()
-
+                            listOf(
+                                "W5" to "Pleadings",
+                                "W8" to "Discovery",
+                                "W12" to "Summ. Judg."
+                            ).forEachIndexed { index, (wk, name) ->
+                                val isSelected = index == 2
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(if (isSelected) BentoAccent else BentoDarkAccent)
-                                        .clickable { model.startTopicQuiz(topic.topicName) }
+                                        .clickable { model.startTopicQuiz(if(wk == "W5") "Week 5: Pleadings" else if(wk == "W8") "Week 8: Discovery" else "Week 12: Summary Judgment") }
                                         .padding(4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -1033,7 +974,7 @@ fun HomeScreen(model: QuizViewModel) {
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            wkLabel,
+                                            wk,
                                             fontSize = 8.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (isSelected) BentoAccent else Color.White
@@ -1041,7 +982,7 @@ fun HomeScreen(model: QuizViewModel) {
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = cleanName,
+                                        text = name,
                                         fontSize = 10.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         color = if (isSelected) BentoHighlight else Color.White,
@@ -1330,21 +1271,12 @@ fun WeekSelectScreen(model: QuizViewModel) {
             }
         }
 
-        val sortedTopics = remember(model.topics, currentCourse) {
-            model.topics
-                .filter { it.category.equals(currentCourse, ignoreCase = true) }
-                .sortedWith(
-                    compareBy<TopicBundle> { extractWeekNumber(it.topicName) }
-                        .thenBy { it.topicName }
-                )
-        }
-
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
-            items(sortedTopics) { topic ->
+            items(model.topics.filter { it.category.equals(currentCourse, ignoreCase = true) }) { topic ->
                 val analytic = analytics.find { it.weekName.equals(topic.topicName, ignoreCase = true) }
                 val hasAttempted = analytic != null && analytic.totalAnswered > 0
                 val accuracyVal = if (hasAttempted) analytic!!.accuracyPercent.toInt() else 0
@@ -1371,7 +1303,7 @@ fun WeekSelectScreen(model: QuizViewModel) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = formatWeekTitle(topic.topicName, topic.category),
+                                    text = topic.topicName,
                                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White
                                 )
@@ -1647,7 +1579,7 @@ fun ActiveQuizScreen(model: QuizViewModel, state: ActiveQuizState?) {
                             // Retry / Close Buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Button(
                                     onClick = { model.restartQuiz() },
@@ -1655,28 +1587,15 @@ fun ActiveQuizScreen(model: QuizViewModel, state: ActiveQuizState?) {
                                     shape = RoundedCornerShape(100),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("Retake", color = BentoAccent, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    Text("Retake Quiz", color = BentoAccent, fontWeight = FontWeight.Bold)
                                 }
-
-                                val nextTopicName = model.getNextTopicName(state.title)
-                                if (nextTopicName != null) {
-                                    Button(
-                                        onClick = { model.startTopicQuiz(nextTopicName) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
-                                        shape = RoundedCornerShape(100),
-                                        modifier = Modifier.weight(1.3f)
-                                    ) {
-                                        Text("Next Week", color = BentoHighlight, fontWeight = FontWeight.Bold, maxLines = 1)
-                                    }
-                                }
-
                                 Button(
                                     onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BentoAccent),
                                     shape = RoundedCornerShape(100),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("Exit", color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    Text("Exit", color = BentoHighlight, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -1870,46 +1789,21 @@ fun ActiveQuizScreen(model: QuizViewModel, state: ActiveQuizState?) {
                         )
                     }
                 } else {
-                    val nextTopicName = model.getNextTopicName(state.title)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Button(
+                        onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .testTag("quiz_finish_btn"),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BentoAccent)
                     ) {
-                        Button(
-                            onClick = { model.navigateTo(ScreenState.WEEK_SELECT) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp)
-                                .testTag("quiz_finish_btn"),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent)
-                        ) {
-                            Text(
-                                text = "EXIT TO LIST",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-
-                        if (nextTopicName != null) {
-                            Button(
-                                onClick = { model.startTopicQuiz(nextTopicName) },
-                                modifier = Modifier
-                                    .weight(1.3f)
-                                    .height(56.dp)
-                                    .testTag("quiz_next_week_btn"),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = BentoAccent)
-                            ) {
-                                Text(
-                                    text = "NEXT WEEK'S QUIZ",
-                                    color = BentoHighlight,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                            }
-                        }
+                        Text(
+                            text = "FINISH SESSION",
+                            color = BentoHighlight,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -2030,7 +1924,7 @@ fun BookmarksScreen(model: QuizViewModel, bookmarks: List<BookmarkedQuestion>) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = formatWeekTitle(bookmark.weekName),
+                                    text = bookmark.weekName,
                                     fontWeight = FontWeight.Bold,
                                     color = BentoAccent,
                                     style = MaterialTheme.typography.bodyMedium
@@ -2094,6 +1988,14 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
     val totalQuizzes by model.totalCompletedQuizzes.collectAsStateWithLifecycle()
     val currentCourse by model.currentCourse.collectAsStateWithLifecycle()
     val streak by model.currentStreak.collectAsStateWithLifecycle()
+
+    // New stateflows for advanced analytics & notifications
+    val topicMastery = model.topicMasteryIndex.collectAsStateWithLifecycle(initialValue = emptyMap()).value
+    val retention = model.ebbinghausRetention.collectAsStateWithLifecycle(initialValue = emptyMap()).value
+    val velocity = model.cognitiveVelocity.collectAsStateWithLifecycle(initialValue = 75f).value
+    val fatigueAlert = model.cognitiveFatigueAlert.collectAsStateWithLifecycle(initialValue = "").value ?: ""
+    val passProbability = model.examPassProbability.collectAsStateWithLifecycle(initialValue = 50f).value
+    val notifications = model.allNotifications.collectAsStateWithLifecycle(initialValue = emptyList()).value
 
     // Calculate Active Recall Retention Score (ARRS)
     val arrsScore = minOf(1000, ((overallAccuracy * 8) + (attempts.size * 4) + (streak * 20)).toInt())
@@ -2159,7 +2061,7 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
             "MODERATE RECALL" -> BentoAccent
             else -> CorrectGreen
         }
-        Triple(formatWeekTitle(topic.topicName, topic.category), interval, badgeColor)
+        Triple(topic.topicName, interval, badgeColor)
     }
 
     Column(
@@ -2781,6 +2683,286 @@ fun AnalyticsInsightsScreen(model: QuizViewModel) {
                                         color = Color.White
                                     )
                                     Text("Weeks", fontSize = 8.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Advanced Analytics Panel
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "COGNITIVE & RETENTION INSIGHTS",
+                        fontWeight = FontWeight.Bold,
+                        color = BentoAccent,
+                        fontSize = 11.sp,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
+
+                    // Average Mastery and Retention calculations
+                    val avgMastery = if (topicMastery.isNotEmpty()) topicMastery.values.average().toFloat() else 0f
+                    val avgRetention = if (retention.isNotEmpty()) retention.values.average().toFloat() else 100f
+
+                    // Side-by-side: Mastery Index & Retention Curve
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Mastery Index (IRT)", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "${avgMastery.toInt()}%",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Weighted by question difficulty constraints",
+                                    fontSize = 9.sp,
+                                    color = BentoSubtext,
+                                    lineHeight = 12.sp
+                                )
+                            }
+                        }
+
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Forgetting Curve", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "${avgRetention.toInt()}%",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (avgRetention >= 70f) CorrectGreen else WarmAmber
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Estimated active recall chance today",
+                                    fontSize = 9.sp,
+                                    color = BentoSubtext,
+                                    lineHeight = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Side-by-side: Cognitive Velocity & Pass Probability
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Cognitive Velocity", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "${velocity.toInt()} pts",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Average response speed and accuracy rating",
+                                    fontSize = 9.sp,
+                                    color = BentoSubtext,
+                                    lineHeight = 12.sp
+                                )
+                            }
+                        }
+
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, BentoBorder)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Exam Pass Prob.", fontSize = 10.sp, color = BentoSubtext, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "${passProbability.toInt()}%",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (passProbability >= 70f) CorrectGreen else WarmAmber
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Confidence interval based on historical data",
+                                    fontSize = 9.sp,
+                                    color = BentoSubtext,
+                                    lineHeight = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Cognitive Fatigue Alerts
+                    if (fatigueAlert.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = IncorrectRed.copy(alpha = 0.15f)),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, IncorrectRed.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(IncorrectRed.copy(alpha = 0.2f), RoundedCornerShape(100)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = "Fatigue Alert",
+                                        tint = IncorrectRed,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "COGNITIVE FATIGUE THRESHOLD",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = IncorrectRed,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = fatigueAlert,
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        lineHeight = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Smart Weak-Spot Passive Review Log
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = BentoSurface),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, BentoBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "PASSIVE RECALL NOTIFICATION HISTORY",
+                                        fontWeight = FontWeight.Bold,
+                                        color = BentoAccent,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Text(
+                                        text = "Memorize legal rules pushed to your home screen passively",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = BentoSubtext
+                                    )
+                                }
+                                Button(
+                                    onClick = { model.simulatePassiveNotification() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = BentoDarkAccent),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text("Test Push", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            if (notifications.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No notifications generated yet. Pushes trigger randomly based on incorrect answers to weak topics.",
+                                        fontSize = 11.sp,
+                                        color = BentoSubtext,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+                                }
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    notifications.reversed().take(5).forEach { notif ->
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(containerColor = BentoBg),
+                                            shape = RoundedCornerShape(16.dp),
+                                            border = BorderStroke(1.dp, BentoBorder.copy(alpha = 0.5f))
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .background(WarmAmber.copy(alpha = 0.15f), RoundedCornerShape(100))
+                                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = notif.topicName.uppercase(),
+                                                            fontSize = 8.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = WarmAmber
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = "Delivered",
+                                                        fontSize = 8.sp,
+                                                        color = CorrectGreen,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Text(
+                                                    text = notif.ruleFact,
+                                                    fontSize = 12.sp,
+                                                    color = Color.White,
+                                                    lineHeight = 16.sp
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

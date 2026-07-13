@@ -3,13 +3,12 @@ package com.example.data
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "quiz_attempts")
-data class QuizAttempt(
+@Entity(tableName = "passive_notifications")
+data class PassiveNotification(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val weekName: String, // e.g., "WEEK 3", "WEEK 4"
     val scenario: String,
-    val selectedIndex: Int,
-    val correctIndex: Int,
+    val topicName: String,
+    val ruleFact: String,
     val timestamp: Long = System.currentTimeMillis(),
-    val responseTimeMs: Long = 0L
+    val isRead: Boolean = false
 )
